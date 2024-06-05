@@ -1,0 +1,10 @@
+{
+    "default.path": "C:/Users/Connor/Documents/exe_test/venv/new_timetable.json", 
+    "editor.font": [
+        "Calibri", 
+        10, 
+        ""
+    ], 
+    "resolution_scaling": 2, 
+    "ui_scaling": 1.3
+}
