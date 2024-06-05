@@ -44,13 +44,13 @@ Download the following files from `main` and place them **all in the same direct
 
 ## How to Use
 ### Creating a Timetable
-<!-- Todo -->
+<-- Todo -->
 
 ### Editing Classes
-<!-- Todo -->
+<-- Todo -->
 
 ### Creating Events
-<!-- Todo -->
+<-- Todo -->
 
 ### Editing Timetable Structure
-<!-- Todo -->
+<-- Todo -->
