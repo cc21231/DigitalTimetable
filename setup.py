@@ -31,7 +31,7 @@ include_files = [
     # ('template.json', 'template.json'),
     # ('settings.json', 'settings.json'),
     # ('window_settings.json', 'window_settings.json'),
-    ('test2.tcl', 'test2.tcl'),
+    ('widget_image_config.tcl', 'widget_image_config.tcl'),
 
     # ('icons/minimise.svg', 'icons/minimise.svg'),
     # ('icons/fullscreen.svg', 'icons/fullscreen.svg'),
