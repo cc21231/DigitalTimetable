@@ -17,7 +17,7 @@ class CIManager:
 
 		self.master: tk.Tk = parent
 		self.style: ttk.Style = style
-		self.master.evalfile('test2.tcl')
+		self.master.evalfile('widget_image_config.tcl')
 
 		self.layout_dict: dict[str: Layout] = {}
 
