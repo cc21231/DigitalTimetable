@@ -2067,15 +2067,15 @@ if file_val[3]:
 window = Window(file_val)
 
 ## Display a warning if using the wrong operating system, otherwise, set DPI awareness
-if platform.system() != 'Windows':
-	mb.showwarning('Unsupported Operating System', f'Your operating system is {platform.system()}, however this\nprogram was developed for Windows.\n\nRunning this program on another system may cause unintended behavior.')
-else:
+if platform.system() == 'Windows':
 	ctypes.windll.shcore.SetProcessDpiAwareness(window.settings['resolution_scaling'])
 
 first_time_setup = False
 if file_exists('first_time_setup.txt') and getattr(sys, 'frozen', True):
 	first_time_setup = True
 	os.remove('first_time_setup.txt')
+	if platform.system() != 'Windows':
+		mb.showwarning('Unsupported Operating System', f'Your operating system is {platform.system()}, however this\nprogram was developed for Windows.\n\nRunning this program on another system may cause unintended behavior.')
 
 # if not first_time_setup:
 else:
