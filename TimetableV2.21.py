@@ -2,12 +2,12 @@
 =========================================
 Program Name  : Timetable.py
 Author        : Connor Bateman
-Version       : v2.21.1
-Revision Date : 23-05-2024 11:00
+Version       : v2.21.2
+Revision Date : 05-06-2024 13:20
 Dependencies  : null
 =========================================
 """
-VERSION = '2.21.1'
+VERSION = '2.21.2'
 import re
 import sys
 from traceback import format_exc
@@ -910,6 +910,7 @@ class TimeTable:
 		return swapaxes(swapaxes(data)[:2]), session_times
 
 	def get_week(self, now: float) -> int:
+		print(datetime.datetime.fromtimestamp(self.start_timestamp), 'start')
 		return int((now - self.start_timestamp) // (86400 * 7))
 
 	def validate_session(self, now: datetime.datetime, h1: int, m1: int, h2: int, m2: int) -> int:
@@ -1618,6 +1619,8 @@ class Window(tk.Tk):
 			week -= 1
 
 		# create_timetable(filename)
+		# print(self.get_start_week(week))
+		# print(datetime.datetime.fromtimestamp(self.get_start_week(week)))
 		with open(filename, 'w', encoding='utf-8') as file:
 			file.writelines(TIMETABLE_JSON_TEMPLATE % self.get_start_week(week))
 		timetable_data = read_timetable(filename)
@@ -2111,11 +2114,14 @@ if any(file_val[:3]) or any(file_val[-3:]):
 		if start_time is None:
 			window.destroy()
 		else:
-			window.settings.update({'default.path': window.filename, 'time.start_timestamp': start_time})
+			window.settings.update({'default.path': window.filename})
 			if not file_exists('settings.json'):
 				json_object = json.dumps(window.settings, indent=4, separators=(', ', ': '))
 				with open('settings.json', 'w', encoding='utf-8') as file:
 					file.write(json_object)
+
+			with open(filename, 'w', encoding='utf-8') as file:
+				file.writelines(TIMETABLE_JSON_TEMPLATE % start_time)
 
 			timetable_data = read_timetable(filename)
 			if timetable_data is not None:
