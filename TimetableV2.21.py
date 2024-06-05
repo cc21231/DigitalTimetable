@@ -2,12 +2,12 @@
 =========================================
 Program Name  : Timetable.py
 Author        : Connor Bateman
-Version       : v2.21.2
+Version       : v2.21.3
 Revision Date : 05-06-2024 13:20
 Dependencies  : null
 =========================================
 """
-VERSION = '2.21.2'
+VERSION = '2.21.3'
 import re
 import sys
 from traceback import format_exc
