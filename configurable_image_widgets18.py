@@ -284,12 +284,14 @@ class Element:
 
 
 class Layout:
+	"""
+	The Layout object is a manager for ttk widget layouts. It allows easy modification of style layouts and layout elements.
+
+	The position and structure of the layout elements are stored in dictionaries
+	"""
+
 	def __init__(self, style: ttk.Style, name: str, data: dict = None, stylename: str = None):
 		"""
-		The Layout object is a manager for ttk widget layouts. It allows easy modification of style layouts and layout elements.
-
-		The position and structure of the layout elements are stored in dictionaries
-
 		:param style: (Style object) A ttk style object
 		:param name: (str) The name of the ttk style that the layout applies to. This is also used as the index for the layout.
 		:param data: (Optional[dict]) The initial layout data in the same format as ttk.Style.layout()
@@ -366,6 +368,10 @@ class Layout:
 
 
 def get_widget_name(style_name: str) -> tuple[str, str]:
+	"""
+	Gets the tkinter widget name from a ttk style string.
+	"""
+
 	print(style_name)
 	style_name = style_name.split('.')
 	widgets = ['TButton', 'TCheckbutton', 'TRadiobutton', 'TScrollbar', 'TScale', 'TEntry', 'TLabelframe', 'TMenubutton', 'TCombobox', 'TSpinbox', 'TNotebook', 'Tab', 'Progressbar', 'Treeview', 'Cell', 'Item', 'Heading', 'Row', 'TPanedwindow', 'TSeparator', 'TSizegrip', 'Vertical', 'Horizontal']

@@ -83,17 +83,25 @@ class CustomComboBox(ttk.Combobox):
 
 
 class CustomRadiobutton(tk.Radiobutton):
+	"""
+	A custom radiobutton widget that allows the user to set a custom foreground colour to use when the radiobutton's value is selected
+	"""
+
 	def __init__(self, *args, **kwargs) -> None:
 		self.selectforeground = kwargs.pop('selectforeground') if 'selectforeground' in kwargs else None
-		self.normalforeground = kwargs['foreground'] if 'foreground' in kwargs else None
-
-		self.variable = kwargs['variable'] if 'variable' in kwargs else None
 		super().__init__(*args, **kwargs)
-		kwargs['variable'].trace_add('write', lambda name, index, mode: self.change_val())
+		self.variable = self.cget('variable')
+		self.normalforeground = self.cget('foreground')
+
+		kwargs['variable'].trace_add('write', lambda name, index, mode: self.change_val())  # Add a trace to the radiobutton's variable to call the `change_val` function whenever the variable's value is changed
 
 		self.change_val()
 
 	def change_val(self) -> None:
+		"""
+		Called whenever the value of the radiobutton variable changes. Updates the foreground and background colour of the widget
+		"""
+
 		if self.variable.get() == self.cget('value'):
 			self.configure(foreground=self.selectforeground, background='#2E3274')
 		else:
@@ -930,6 +938,7 @@ class TimeTable:
 			maxlen = None
 
 			for ln, line in list(enumerate(lines))[::-1]:
+				numbering = ''
 				line_indent = self.event_entry.check_indent(line=line)
 				if line_indent is None:
 					line_indent = ''
@@ -1987,7 +1996,7 @@ else:
 	if file_val[10]:
 		mb.showwarning('Index Error', f'One or more field(s) are missing from "{file_val[10]}".')
 
-if any(file_val[:3]) or any(file_val[-3:]):
+if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the settings file and window_settings file.
 	filename = fd.asksaveasfilename(defaultextension='.json', filetypes=(('JSON', '.json'), ('Plain Text', '.txt'), ('All', '*')), initialdir=find_data_file(), initialfile='new_timetable.json', confirmoverwrite=True, parent=window, title='Create new timetable')
 	if filename == "":
 		window.destroy()
@@ -2014,6 +2023,7 @@ if any(file_val[:3]) or any(file_val[-3:]):
 				window.timetable = TimeTable(window, *timetable_data)
 				window.timetable.grid(row=1, column=0, sticky='nswe')
 
+## Check that the window hasn't been destroyed by the code above
 if 'window' in globals():
 	window.update_idletasks()
 	print((window.timetable.display_frame.winfo_height() + window.top_bar.winfo_height()) / 34)
