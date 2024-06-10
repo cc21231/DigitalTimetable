@@ -22,7 +22,6 @@ from tkinter import simpledialog as sd
 import platform
 import tkinter as tk
 import pywinstyles
-# import numpy as np
 import datetime
 import os.path
 import ctypes
@@ -30,9 +29,6 @@ import tksvg
 import json
 from toolsV1 import *
 from tkinter import font as tkfont
-
-
-# INSTALL_DIR = r'AppData/Local/Programs/Timetable/'
 
 
 class AutoScrollbar(ttk.Scrollbar):
@@ -148,15 +144,7 @@ class WindowTopbar(tk.Frame):
 		self.columnconfigure(10, weight=1)
 		self.rowconfigure(0, weight=1)
 
-		# self.icon = tk.PhotoImage(data=WIN_ICON)
-		# self.icon = self.icon.subsample(3, 3)
-
 		buttonconfig = {'background': self.cget('background'), 'width': 27, 'height': 27, 'activebackground': '#303841', 'mouseoverbackground': '#303841', 'borderwidth': 0}
-
-		# icon_label = tk.Label(self, image=self.root.icons['window_icon'], width=27, height=27, background=self.cget('background'))
-		# icon_label.grid(row=0, column=0, sticky='nswe', padx=(0, 1))
-
-		# tk.Frame(self, background='#2B2B2B', width=2).grid(row=0, column=1, sticky='nswe', padx=5, pady=5)
 
 		MouseoverButton(self, image=icons['save'], command=lambda: self.root.save_timetable(), **buttonconfig).grid(row=0, column=2, sticky='nswe', padx=(0, 1))
 		MouseoverButton(self, image=icons['saveas'], command=lambda: self.root.save_timetable_as(), **buttonconfig).grid(row=0, column=3, sticky='nswe', padx=(0, 10))
@@ -207,9 +195,7 @@ class WindowTopbar(tk.Frame):
 		about_menubutton = tk.Menubutton(self, text='About', relief='flat', borderwidth=0, activebackground='#323232', image=self.root.pixel, compound='center', height=13, width=50, background=self.cget('background'), foreground='#D8DEE9', activeforeground='#D8DEE9', font=('Calibri', 13))
 		about_menubutton.grid(row=0, column=9, sticky='nswe', padx=(0, 1))
 		about_menu = tk.Menu(about_menubutton, tearoff=0, background='#323232', relief='flat', foreground='#fff', borderwidth=10, activeborderwidth=0, type='normal')
-		# about_menu.add_command(label='Version', image=icons['version'], command=lambda: self.root.show_version())
 		about_menu.add_command(label='About', image=icons['about'], compound='left', command=lambda: self.root.show_about())
-		# about_menu.add_separator(background='#D4D4D4', )
 		about_menu.add_command(label='Help', image=icons['help'], compound='left', command=lambda: self.root.show_help())
 		about_menu.add_separator(background='#D4D4D4')
 		about_menu.add_command(label='Report a Bug', image=icons['bug'], compound='left', command=lambda: self.root.report_bug())
@@ -247,7 +233,7 @@ class IndentText(tk.Text):
 		lettering = r'(?P<LETTERING>(([A-Z]{1,2})|([a-z]{1,2}))[\):])'
 		numbering = r'(?P<NUMBERING>[0-9]{1,2}[\.\):])'
 		pattern = rf'(\n|\A)[ \t]*({dotpoints}|{numbering}|{lettering}|{dashpoint})[ \t]+'
-		self.cdg.prog = re.compile(pattern, re.S)  # + ic.make_pat().pattern
+		self.cdg.prog = re.compile(pattern, re.S)
 		self.cdg.idprog = re.compile(r'\s+(\w+)', re.S)
 
 		self.cdg.tagdefs['DASHPOINT'] = {'foreground': '#F9AE57'}
@@ -265,8 +251,6 @@ class IndentText(tk.Text):
 		self.parent.update_button_states()
 
 	def key_press(self, event: tk.Event) -> Optional[str]:
-		# print(self.percolator.bottom.insert)
-		print(self.tag_names())
 		self.parent.pause_text_event = False
 		cursor_pos = self.index(tk.INSERT)
 		linenum = cursor_pos.split('.')[0]
@@ -309,9 +293,7 @@ class IndentText(tk.Text):
 					case _:
 						line = self.get(f'{linenum}.0', f'{linenum}.end')
 						indent = self.check_indent(line=line)
-						# print(cursor_pos, f'{linenum}.{len(indent)}', cursor_pos == f'{linenum}.{len(indent)}')
 						if indent is not None and cursor_pos == f'{linenum}.{len(indent)}':
-							# numbering = len(indent.strip(' \t'))
 							location = re.match('[^\t ]+', indent)
 							if location is None:
 								if indent[-1] != '\t':
@@ -542,12 +524,10 @@ class TimetableCell:
 		print('update event')
 		events = list(filter(lambda v: v.match(self.root.week, self.day, self.session), self.root.events))
 		if not events:
-			# if self.events_indicator.grid_info():
 			self.events_indicator.configure(image=self.root.master.pixel)
 			self.current_event = None
 
 		elif events:
-			# self.events_indicator.grid()
 			self.current_event = events[0]
 			self.events_indicator.configure(image=self.root.master.icons[self.current_event.event_type.get()])
 
@@ -654,7 +634,6 @@ class TimeTable:
 		self.start_timestamp = start_date
 
 		self.week = self.get_week(datetime.datetime.now().timestamp())
-		# self.master.get_start_week(self.week)
 		self.day_start_time = day_start_time
 
 		self.sessions, self.sessiontimes = self.get_sessiontimes(sessions)
@@ -728,7 +707,6 @@ class TimeTable:
 		self.numbering_format = tk.IntVar(self.display_frame, 0)
 
 		self.entry_font = tkfont.Font(family=self.master.settings['editor.font'][0], size=self.master.settings['editor.font'][1], weight='bold' if 'bold' in self.master.settings['editor.font'][2] else 'normal', slant='italic' if 'italic' in self.master.settings['editor.font'][2] else 'roman')
-		# tk.Radiobutton(self.formatting_frame, font=('Segoe UI', 10, 'bold'), value=0, text=' ', padx=5, pady=5, variable=self.numbering_format, indicatoron=False, relief='flat', borderwidth=0, foreground='#aaa', background='#272E35', activeforeground='#09f', activebackground='#2E3274', width=9, height=9, compound='center', highlightbackground='#f00', selectcolor='#2E3274').grid(row=0, column=5, padx=(0, 1), pady=0, sticky='nswe') # , selectforeground='#09f'
 
 		## Todo: complete dotpoint formatting bar
 		CustomRadiobutton(self.formatting_frame, font=('Segoe UI', 9, 'bold'), image=self.master.pixel, padx=5, pady=5, indicatoron=False, relief='flat', borderwidth=0, foreground='#aaa', background='#272E35', activebackground='#3E4244', width=20, height=9, compound='center', selectcolor='#323B44', selectforeground='#6FB0DB', text='None', value=0, variable=self.numbering_format, command=lambda: self.update_list_format()).grid(row=0, column=0, padx=(0, 1), pady=0, sticky='nswe')
@@ -743,10 +721,8 @@ class TimeTable:
 		self.event_scrollbar.grid(row=1, column=1, sticky='NS', padx=(0, 1), pady=(1, 1))
 
 		self.event_entry.configure(yscrollcommand=self.event_scrollbar.set)
-		# self.event_entry.bind('<Button-1>', lambda v: print(self.event_entry.winfo_height())), image=master.pixel, compound='center', height=49
 
 		self.event_entry._orig = str(self.event_entry) + '_orig'
-		# self.display_frame.tk.call('rename', str(self.event_entry), self.display_frame._orig)
 		self.event_entry.tk.createcommand(str(self.event_entry), self._proxy)
 
 		self.event_entry.bind('<<Edit>>', lambda v: self.update_button_states())
@@ -814,8 +790,6 @@ class TimeTable:
 		entryframe = tk.Frame(self.class_edit_frame, background='#4F565E')
 		entryframe.grid(row=0, column=1, sticky='nswe', padx=(2, 1), pady=(0, 1))
 		entryframe.columnconfigure(1, weight=1)
-		# tk.Frame(buttonframe, background='#222', height=10).grid(row=2, column=0, columns=3, sticky='nswe')
-		# tk.Label(self.class_edit_frame, background='#222', foreground='#D8DEE9', font=('Calibri', 10, 'bold'), text='Class Information').grid(row=1, column=0, columns=3, padx=(1, 0), pady=(10, 0), sticky='nswe')
 
 		tk.Label(entryframe, background='#424D59', foreground='#D8DEE9', font=('Calibri', 12), text='Name', width=5).grid(row=0, column=0, padx=(1, 0), pady=(1, 0), sticky='nswe')
 
@@ -895,16 +869,12 @@ class TimeTable:
 		self.update_week(self.week)
 
 	def get_sessiontimes(self, data: list[list[str, str, str]]) -> tuple[list[list[str, str]], list[list[int]]]:
-		print(data)
-		# print(start_time)
 		session_times = [list(map(int, self.day_start_time.split(':')))]
-		# end_time = None
 		for idx, time in enumerate(swapaxes(data)[2]):
 			if time == '-1':
 				session_times.append([-1, -1])
 			else:
 				t = list(map(int, time.split(':')))
-				# session_times[-1].extend(t)
 				session_times.append(t)
 
 		return swapaxes(swapaxes(data)[:2]), session_times
@@ -923,13 +893,7 @@ class TimeTable:
 			return (now.hour == h1 and now.minute >= m1) or (now.hour == h2 and now.minute < m2)
 
 	def get_session(self, now: datetime.datetime) -> Optional[int]:
-		print('st', self.start_timestamp)
-		# t = [(7, 15, 8, 20), (8, 20, 8, 30), (8, 30, 9, 30), (9, 30, 10, 45), (10, 45, 11, 15), (11, 15, 12, 15), (12, 15, 13, 15), (13, 15, 13, 45), (13, 45, 14, 45)]
-
 		session_index = list(map(lambda v, n=now: self.validate_session(n, *v), zip(*swapaxes(self.sessiontimes[:-1]), *swapaxes(self.sessiontimes[1:]))))
-
-		# session_index = list(map(lambda v: (v[0] != v[2] and ((now.hour == v[0] and now.minute >= v[1]) or (now.hour == v[2] and now.minute < v[3]))) or (v[0] == v[2] and v[0] == now.hour and v[1] <= now.minute <= v[3]), t))
-		print('si', session_index)
 
 		if True not in session_index:
 			if now.hour > 14 or (now.hour == 45 and now.minute > 45):
@@ -1106,14 +1070,9 @@ class TimeTable:
 			self.active_cell.events_indicator.configure(image=self.master.icons[self.active_cell.current_event.event_type.get()])
 
 	def update_week(self, value: str | int) -> None:
-		print(value)
-		# print(self.events[0].week, [value, self.week])
 		events = list(filter(lambda v: v.week in [int(value), self.week], self.events))
-		print(events)
 		self.week_elems[self.week].numlabel.configure(font=('Arial', 11))
 		self.week_elems[int(value)].numlabel.configure(font=('Arial', 11, 'bold'))
-		# self.week_elems[self.week].set_bg('#303841')
-		# self.week_elems[int(value)].set_bg('#46525C')
 		self.week = int(value)
 		for event in events:
 			cell = self.tt_elements[event.day][event.session]
@@ -1173,10 +1132,6 @@ class TimeTable:
 			self.events.remove(event)
 			self.week_elems[self.week].remove_event(event)
 			self.active_cell.set_event(None)
-			# self.active_cell.current_event = None
-			# self.active_cell.events_indicator.grid_remove()
-
-			# self.active_cell.update_event()
 			self.update_active_event()
 			self.check_saved(self.get_json())
 
@@ -1205,22 +1160,14 @@ class TimeTable:
 		buffer = buffer.replace("'", '"') + '\n    ],\n    "sessions": [\n'
 		session_data = []
 		for session, time in zip(self.sessions, self.sessiontimes[1:]):
-			# print(session, time)
-			# exit()
 			session_data.append(f'        ["{session[0]}", {"true" if session[1] else "false"}, "' + (f'{time[0]:>02n}:{time[1]:<02n}' if time[0] != -1 else '-1') + '"]')
-		# print(session_data)
-
-		# print(buffer, ',\n'.join(session_data))
 		buffer += ',\n'.join(session_data)
 		buffer += f'\n    ],\n    "day_start": "{self.day_start_time}",\n    "start_date_timestamp": {self.start_timestamp}\n}}'
-		print(buffer)
-		# print(self.events)
 		return buffer
 
 	def save_event(self) -> None:
 		if self.active_cell is not None and self.active_cell.current_event is not None:
 			self.active_cell.current_event.text = self.event_entry.get(1.0, tk.END).strip('\n')
-			# self.active_cell.current_event.event_type = self..get(1.0, tk.END).strip('\n')
 
 			self.active_cell.update_event()
 
@@ -1231,7 +1178,6 @@ class TimeTable:
 			self.pause_text_event = False
 		else:
 			if self.event_entry.get(1.0, tk.END).strip('\n') != self.active_cell.current_event.text.strip('\n'):
-				# print(self.event_entry.get(1.0, tk.END).strip('\n'), self.active_cell.current_event.text.strip('\n'))
 				self.events_saved = False
 			else:
 				self.check_saved(self.get_json())
@@ -1307,10 +1253,7 @@ class TimeTable:
 			else:
 				self.event_info_label.configure(text='No Selection')
 
-			# self.event_info_label.grid_configure(rowspan=2)
-			# self.event_info_label.configure(height=69)
 			self.delete_button.configure(state='disabled')
-			# self.save_button.configure(state='disabled')
 			self.event_type_combobox.configure(state='disabled', textvariable=self.empty_text_variable)
 			self.event_type_combobox.set('')
 		else:
@@ -1321,7 +1264,6 @@ class TimeTable:
 			self.event_entry.delete(1.0, tk.END)
 			self.event_entry.insert(1.0, self.active_cell.current_event.text)
 			self.delete_button.configure(state='normal')
-			# self.save_button.configure(state='disabled')
 			self.event_type_combobox.configure(state='normal', textvariable=self.active_cell.current_event.event_type)
 
 			self.pause_text_event = True
@@ -1337,27 +1279,14 @@ class TimeTable:
 class Window(tk.Tk):
 	def __init__(self, file_checks, *args: Any, **kwargs: Any):
 		super().__init__(*args, **kwargs)
-		# tk.Button(font=('Calibri', 8, 'bold italic'))
-		# tk.Button(font=('Calibri', 8, 'bolditalic'))
-		# tk.Button(font=('Calibri', 8, 'normal'))
-		# tk.Button(font=('Calibri', 8, 'italic bold'))
-		# tk.Button(font=('Calibri', 8, 'bold italic'))
-
-		# alt_load = any(file_checks[:-1])
 
 		self.focus()
 		self.title(f'Timetable V{VERSION}')
 
 		self.pixel = tk.PhotoImage(width=1, height=1)
 
-		# self.icons = {k: tk.PhotoImage(data='iVBORw0KGgoAAAANSUhEUgAAAB' + v) for k, v in ICON_DATA.items()}
 		self.icons = load_images(
 			[
-				# ('icons/minimise.svg', 'minimise', 16),
-				# ('icons/fullscreen.svg', 'fullscreen', 16),
-				# ('icons/windowed.svg', 'windowed', 16),
-				# ('icons/close.svg', 'close', 16),
-
 				('icons/dotpoints.svg', 'dotpoints', 18),
 				('icons/numbering3.svg', 'numbering', 18),
 				('icons/lettering.svg', 'lettering', 18),
@@ -1404,9 +1333,6 @@ class Window(tk.Tk):
 			}
 		)
 
-		# self.settings = None
-		# self.window_settings = None
-
 		if any(file_checks[:3]) or any(file_checks[-3:]):
 			self.filename = 'tempfile.json'
 			with open(self.filename, 'w', encoding='utf-8') as template_file:
@@ -1437,7 +1363,6 @@ class Window(tk.Tk):
 
 		timetable_data = read_timetable(self.filename)
 		if timetable_data is None:  # This shouldn't be able to happen any more thanks to the file validation
-			#self.destroy()
 			pass
 
 		self.top_bar = WindowTopbar(self, background='#000')
@@ -1462,16 +1387,7 @@ class Window(tk.Tk):
 		self.option_add('*TCombobox*Listbox.selectBackground', '#424D59')
 		self.option_add('*TCombobox*Listbox.selectForeground', '#D8DEE9')
 
-		self.style.configure('TCombobox.Vertical.TScrollbar', background='#696F75', troughcolor='#444B53', relief='flat', troughrelief='flat', arrowcolor='#B8BBBE')  # , background='#FF7921', troughcolor='#323232', relief='flat', borderwidth=0, troughrelief='flat', width=5, groovewidth=5, troughborderwidth=0, arrowsize=5)
-
-		# self.style.layout('TCombobox', [('Custom.Combobox.field', {'sticky': 'nswe', 'children': [('Custom.Combobox.downarrow', {'side': 'right', 'sticky': 'ns'}), ('Custom.Combobox.padding', {'expand': '1', 'sticky': 'nswe', 'children': [('Custom.Combobox.textarea', {'sticky': 'nswe'})]})]})])
-		# self.option_add('*TCombobox*Listbox.background', '#323232')
-		# self.option_add('*TCombobox*Listbox.foreground', '#fff')
-		# self.option_add('*TCombobox*Listbox.selectBackground', '#555')
-		# self.option_add('*TCombobox*Listbox.selectForeground', '#fff')
-		# self.style.configure('stipple.TEntry')
-
-		# self.style.configure('TCombobox.Vertical.TScrollbar', background='#666', troughcolor='#444', relief='flat', troughrelief='flat', arrowcolor='#ccc')  # , background='#FF7921', troughcolor='#323232', relief='flat', borderwidth=0, troughrelief='flat', width=5, groovewidth=5, troughborderwidth=0, arrowsize=5)
+		self.style.configure('TCombobox.Vertical.TScrollbar', background='#696F75', troughcolor='#444B53', relief='flat', troughrelief='flat', arrowcolor='#B8BBBE')
 		self.style.configure('TCombobox', background='#424D59', fieldbackground='#2E3238', highlightthickness=1, highlightbackground='#4F565E', insertwidth=2, insertcolor='#F9AE58', borderwidth=0, relief='flat', arrowcolor='#B8BBBE', foreground='#D8DEE9', font=('Calibri', 13), padding=(2, 5, 2, 5))
 		self.style.map('TCombobox', background=[('pressed', '#5E6E7F'), ('active', '#46525C'), ('disabled', '#424D59')], foreground=[('!disabled', '#D8DEE9'), ('disabled', '#BFC5D0')], fieldbackground=[('!disabled', '#2E3238'), ('disabled', '#424D59')])
 
@@ -1479,10 +1395,6 @@ class Window(tk.Tk):
 
 		self.style.configure('Custom.TSpinbox', background='#424D59', fieldbackground='#2E3238', highlightthickness=1, highlightbackground='#4F565E', insertwidth=2, insertcolor='#F9AE58', borderwidth=0, relief='flat', arrowcolor='#B8BBBE', foreground='#D8DEE9', font=('Calibri', 13), padding=(2, 5, 2, 5), arrowsize=12)
 		self.style.map('Custom.TSpinbox', background=[('pressed', '#5E6E7F'), ('active', '#46525C'), ('disabled', '#424D59')], foreground=[('!disabled', '#D8DEE9'), ('disabled', '#BFC5D0')], fieldbackground=[('!disabled', '#2E3238'), ('disabled', '#424D59')])
-		# self.style.map('Custom.TSpinbox.uparrow', background=[('pressed', '#5E6E7F'), ('active', '#46525C'), ('disabled', '#424D59')], foreground=[('!disabled', '#D8DEE9'), ('disabled', '#BFC5D0')], fieldbackground=[('!disabled', '#2E3238'), ('disabled', '#424D59')])
-
-		# self.style.configure('TCombobox', font=('Calibri', 13), background='#2E3238', activebackground='#2E3238', selectrelief='flat', foreground='#D8DEE9', borderwidth=0, insertbackground='#F9AE58', insertcolor='#ff0', relief='flat', padding=(1, 4, 1, 4), highlightthickness=0, arrowcolor='#B8BBBE', arrowsize=12, fieldbackground='#2E3238')
-		# self.style.map('TCombobox', background=[('active', '#46525C'), ('disabled', '#666')], foreground=[('!disabled', '#D8DEE9'), ('disabled', '#eee')], fieldbackground=[('!disabled', '#2E3238'), ('disabled', '#777')])
 
 		self.style.configure('stipple.TButton', background='#303841', foreground='#D8DEE9', highlightthickness=1, highlightbackground='#4F565E', bordercolor='#f00', borderwidth=0, relief='flat', activeforeground='#D4D6D7', activebackground='#303841', disabledforeground='#BFC5D0', padding=(0, 0, 0, 0), shiftrelief=1, anchor='center')
 		self.style.map('stipple.TButton', background=[('pressed', '#5E6E7F'), ('active', '#3B434C')], foreground=[('pressed', '#C0C5CE'), ('active', '#C0C5CE'), ('!active', '#D8DEE9'), ('disabled', '#A8AEB7')])
@@ -1531,7 +1443,6 @@ class Window(tk.Tk):
 		if not file_exists(filename):
 			return
 
-		# create_timetable(filename)
 		self.filename = filename
 		self.top_bar.filename_display.configure(text=filename)
 		self.settings.update({'default.path': filename})
@@ -1557,7 +1468,6 @@ class Window(tk.Tk):
 		tl.attributes('-topmost', True)
 		tl.resizable(False, False)
 		tl.title('About')
-		# tl.deiconify()
 		self.call('wm', 'iconphoto', str(tl), self.icons['window_icon2'])
 		tl.columnconfigure(0, weight=1)
 		tl.rowconfigure(0, weight=1)
@@ -1576,9 +1486,6 @@ class Window(tk.Tk):
 	def show_settings(self) -> None:
 		SettingsWindow(self, background='#303841')
 
-	# def show_version(self) -> None:
-	# 	mb.showinfo('Version', f'The current version is {VERSION}.')
-
 	def get_start_week(self, week: Optional[int] = None, allow_cancel: bool = False) -> int | None:
 		if week is None:
 			week = sd.askinteger('Setup', 'Enter the current week:', initialvalue=1, minvalue=1, maxvalue=11)
@@ -1595,16 +1502,10 @@ class Window(tk.Tk):
 		start_timestamp = int(current_time.timestamp()) - current_time.hour * 3600 - current_time.minute * 60 - current_time.second
 		## Remove days since term began
 		start_timestamp -= (week * 7 + current_time.weekday()) * 86400
-		# self.settings.update({'time.start_timestamp': self.start_timestamp})
 		return start_timestamp
 
 	def new_timetable(self) -> None:
-		## Todo: menubar: save, saveas, open, new, load, set date, help, settings, suggest feature
-		## Todo: add undo/redo support to the text entry
 		## Todo: add delete to indent text keypress manager
-		## Todo: prompt save when closing window
-		## Todo: save windowsettings when closing window
-		## Todo:
 
 		filename = fd.asksaveasfilename(defaultextension='.json', filetypes=(('JSON', '.json'), ('Plain Text', '.txt'), ('All', '*')), initialdir=os.path.dirname(self.filename), confirmoverwrite=True, initialfile=self.filename, parent=self)
 		if not filename:
@@ -1618,9 +1519,6 @@ class Window(tk.Tk):
 		else:
 			week -= 1
 
-		# create_timetable(filename)
-		# print(self.get_start_week(week))
-		# print(datetime.datetime.fromtimestamp(self.get_start_week(week)))
 		with open(filename, 'w', encoding='utf-8') as file:
 			file.writelines(TIMETABLE_JSON_TEMPLATE % self.get_start_week(week))
 		timetable_data = read_timetable(filename)
@@ -1729,9 +1627,6 @@ def read_timetable(path: str, encoding: str = 'utf-8') -> tuple[list[str], list[
 	except json.decoder.JSONDecodeError:
 		mb.showwarning('JSON Decode Error', f'Could not load "{path}".\nReason: JSON Decode Error\n\n{sys.exc_info()[1]}')
 		return
-	print(data)
-
-	# timetable_data = np.array(data['timetable'], np.uint8)
 
 	return data['classes'], data['teachers'], data['rooms'], data['timetable'], data['events'], data['day_start'], data['sessions'], data['start_date_timestamp']
 
@@ -1781,13 +1676,12 @@ def load_images(data: list[tuple[str, str, int]], linecolour: str = '#D4D4D4', h
 
 
 def find_data_file() -> str:
-	""" From: https://stackoverflow.com/a/56748839"""
+	"""From: https://stackoverflow.com/a/56748839"""
 	if getattr(sys, 'frozen', False):
 		# The application is frozen
 		return os.path.dirname(os.path.realpath(sys.executable))
 	else:
 		# The application is not frozen
-		# Change this bit to match where you store your data files:
 		return os.path.dirname(os.path.realpath(__file__))
 
 
@@ -1804,13 +1698,10 @@ class SettingsWindow(tk.Toplevel):
 		self.resolution_scaling = tk.StringVar(self, str(root.settings['resolution_scaling']))
 		self.ui_scaling = tk.StringVar(self, str(root.settings['ui_scaling']))
 
-		# self.resizable(False, False)
 		self.title('Settings')
 		self.geometry(f'+{self.root.winfo_x() + int(self.root.winfo_width() // 3)}+{self.root.winfo_y() + int(self.root.winfo_height() // 3)}')
-		# tl.deiconify()
 		self.root.call('wm', 'iconphoto', str(self), self.root.icons['window_icon2'])
 		self.columnconfigure(0, weight=1)
-		# self.rowconfigure(0, weight=1)
 
 		buttonconfig = {'background': '#3B434C', 'foreground': '#D8DEE9', 'activebackground': '#303841', 'mouseoverbackground': '#303841', 'borderwidth': 0, 'font': ('Calibri', 12), 'image': self.root.pixel, 'compound': 'center', 'highlightthickness': 1, 'highlightbackground': '#4F565E'}
 		labelconfig = {'background': '#303841', 'borderwidth': 0, 'anchor': 'w', 'justify': 'left', 'image': self.root.pixel, 'compound': 'center'}
@@ -1877,9 +1768,7 @@ class SettingsWindow(tk.Toplevel):
 
 		frame = tk.Frame(self, background='#4F565E', height=5)
 		frame.grid(row=4, column=0, sticky='nse', padx=5, pady=5)
-		# frame.columnconfigure(0, weight=1)
-		## todo: finsh settings and add black border to window icon.
-		# tk.Frame(frame, background='#303841').grid(row=0, column=0, sticky='nswe')
+
 		MouseoverButton(frame, text='Ok', command=lambda: self.ok_pressed(), width=60, **buttonconfig).grid(row=0, column=1, sticky='nswe', padx=(1, 1), pady=(1, 1))
 		MouseoverButton(frame, text='Cancel', command=lambda: self.destroy(), width=60, **buttonconfig).grid(row=0, column=2, sticky='nswe', padx=(0, 1), pady=(1, 1))
 		MouseoverButton(frame, text='Apply', command=lambda: self.apply(), width=60, **buttonconfig).grid(row=0, column=3, sticky='nswe', padx=(0, 1), pady=(1, 1))
@@ -2054,12 +1943,9 @@ about_width = max(map(len, about_info.split('\n')))
 about_info = about_info.format(spacer='=' * about_width, pyheading=' Python '.center(about_width, '-'), exheading=' Executable '.center(about_width, '-'))
 
 about_info += '=' * about_width
-print(about_info)
-# exit()
 
 
 if file_val[3]:
-	# if not file_exists('window_settings.json'):
 	json_object = json.dumps(DEFAULT_WINDOW_SETTINGS, indent=4, separators=(', ', ': '))
 	with open('window_settings.json', 'w', encoding='utf-8') as file:
 		file.write(json_object)
@@ -2077,7 +1963,6 @@ if file_exists('first_time_setup.txt') and getattr(sys, 'frozen', True):
 	if platform.system() != 'Windows':
 		mb.showwarning('Unsupported Operating System', f'Your operating system is {platform.system()}, however this\nprogram was developed for Windows.\n\nRunning this program on another system may cause unintended behavior.')
 
-# if not first_time_setup:
 else:
 	if file_val[0]:
 		mb.showwarning('File not Found', f'Could not find "settings.json" in "{find_data_file()}"\nLoading default settings instead.')
@@ -2135,7 +2020,5 @@ if 'window' in globals():
 	print((window.timetable.display_frame.winfo_width()) / 47)
 	size = (window.timetable.display_frame.winfo_width() - 47, window.timetable.display_frame.winfo_height() + window.top_bar.winfo_height() - 34)
 	window.wm_minsize(*size)
-
-# SettingsWindow(window, background='#303841')
 
 window.mainloop()
