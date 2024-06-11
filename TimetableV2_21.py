@@ -214,6 +214,369 @@ class WindowTopbar(tk.Frame):
 		self.filename_display.grid(row=0, column=10, sticky='nswe', padx=(0, 1))
 
 
+class FormattingOption(tk.Frame):
+	def __init__(self, root, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		self.root: ExportAsPDFMenu = root
+		self.style_option = tk.StringVar(self)
+
+		# self.rowconfigure(0, weight=1)
+		# self.columnconfigure(12, weight=1)
+
+		self.class_dropdown = CustomComboBox(self, style='TCombobox', textvariable=self.style_option, values=['GRID', 'ALIGN', 'VALIGN', 'FONT', 'TOPPADDING', 'FONTSIZE', 'TEXTCOLOR', 'BACKGROUND', 'SPAN', 'BOTTOMPADDING'])
+		self.class_dropdown.pack(side='left', fill='y', padx=1, pady=1)#.grid(row=0, column=0, sticky='NSWE', padx=(1, 1), pady=1)
+
+		tk.Frame(self, background='#222', width=12).pack(side='left', fill='y')#.grid(row=0, column=1, sticky='NSWE', pady=0)
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=2, sticky='NSWE', padx=(1, 0), pady=1)
+
+		self.x1_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
+		self.x1_entry.configure(invalidcommand=lambda: self.invalid_input(self.x1_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.x1_entry, 'x'))
+		self.x1_entry.pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=3, sticky='NSWE', padx=(1, 0), pady=1)
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Y₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=4, sticky='NSWE', padx=(1, 0), pady=1)
+
+		self.y1_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
+		self.y1_entry.configure(invalidcommand=lambda: self.invalid_input(self.y1_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.y1_entry, 'y'))
+		self.y1_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)#.grid(row=0, column=5, sticky='NSWE', padx=(1, 0), pady=1)
+
+		tk.Frame(self, background='#222', width=12).pack(side='left', fill='y')#.grid(row=0, column=6, sticky='NSWE', pady=0)
+
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=7, sticky='NSWE', padx=(1, 0), pady=1)
+
+		self.x2_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
+		self.x2_entry.configure(invalidcommand=lambda: self.invalid_input(self.x2_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.x2_entry, 'x'))
+		self.x2_entry.pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=7, sticky='NSWE', padx=(1, 0), pady=1)
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Y₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=8, sticky='NSWE', padx=(1, 0), pady=1)
+
+		self.y2_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
+		self.y2_entry.configure(invalidcommand=lambda: self.invalid_input(self.y2_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.y2_entry, 'y'))
+		self.y2_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)#.grid(row=0, column=9, sticky='NSWE', padx=(1, 1), pady=1)
+
+		tk.Frame(self, background='#222', width=12).pack(side='left', fill='y')#.grid(row=0, column=10, sticky='NSWE', pady=0)
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Value ', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=11, sticky='NSWE', padx=(1, 0), pady=1)
+
+		self.value_entry = ttk.Entry(self, style='stipple.TEntry', validate='focusout')
+		self.value_entry.configure(invalidcommand=lambda: self.invalid_input(self.value_entry, 'Invalid Value'), validatecommand=lambda: self.validate_value())
+		self.value_entry.pack(side='left', expand=True, fill='both', padx=(1, 1), pady=1)#.grid(row=0, column=12, sticky='NSWE', padx=(0, 1), pady=1)
+
+		self.bind_class(f'click:{id(self)}', '<Button-1>', lambda v: self.clicked())
+		self.bindtags((f'click:{id(self)}', *self.bindtags()))
+		for i in self.winfo_children():
+			i.bindtags((f'click:{id(self)}', *i.bindtags()))
+
+	def clicked(self):
+		if self.root.selected_format_option == self:
+			self.deselect()
+			self.root.selected_format_option = None
+		else:
+			if self.root.selected_format_option is not None:
+				self.root.selected_format_option.deselect()
+			self.root.selected_format_option = self
+			self.select()
+
+	def select(self):
+		self.configure(background='#F9AE58')
+
+	def deselect(self):
+		self.configure(background='#3B434C')
+
+	def select_style_class(self):
+		pass
+
+	def validate_pos(self, elem, mode):
+		val = elem.get()
+		if not val.isnumeric():
+			return False
+
+		if mode == 'x':
+			return -7 <= int(val) <= 6
+		else:
+			return -(len(self.root.timetable_data['sessions'])) <= int(val) <= (len(self.root.timetable_data['sessions']) - 1)
+
+	def invalid_input(self, elem, text):
+		cursor_pos = elem.index(tk.INSERT)
+		mb.showinfo('Invalid Input', text)
+		elem.focus()
+		elem.icursor(cursor_pos)
+
+	def validate_class(self):
+		pass
+
+	def validate_value(self):
+		val = self.value_entry.get()
+		# print(eval(f'[{val}]'))
+
+		try:
+			eval(f'[{val}]')
+			return True
+		except:
+			return False
+
+from reportlab.lib.colors import HexColor
+from reportlab.lib.units import cm
+
+
+class ExportAsPDFMenu(tk.Toplevel):
+	def __init__(self, root, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.root = root
+		# self.page_preset = tk.StringVar(self)
+		self.configure(background='#3B434C')
+		self.columnconfigure(2, weight=1)
+		self.rowconfigure(2, weight=1)
+
+		frame = tk.Frame(self, background='#3B434C')
+		frame.grid(row=0, column=0, columns=3, sticky='NSWE', padx=1, pady=(1, 0))
+		# frame.rowconfigure(0, weight=1)
+		frame.columnconfigure(1, weight=1)
+
+		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Output File', anchor='e', image=self.root.pixel, font=('Calibri', 12), width=70, compound='center').grid(row=0, column=0, sticky='NSWE', padx=(0, 1), pady=0)
+
+		self.filename_entry = ttk.Entry(frame, style='stipple.TEntry')
+		self.filename_entry.grid(row=0, column=1, sticky='NSWE', padx=(0, 1), pady=0)
+
+		MouseoverButton(frame, command=lambda: self.browse_filename(), background='#303841', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, image=self.root.icons['load'], compound='center', highlightthickness=1, highlightbackground='#4F565E', width=25, anchor='center', height=20).grid(row=0, column=2, sticky='nswe', padx=(0, 0), pady=0)
+
+		self.presets_selector = CustomComboBox(self, style='TCombobox', values=['A4 (Portrait)', 'A5 (Portrait)', 'A4 (Landscape)', 'A5 (Landscape)'], width=5)
+		self.presets_selector.grid(row=1, column=0, sticky='NSWE', padx=1, pady=1, columnspan=2)
+		self.presets_selector.set('A4 (Portrait)')
+
+		frame = tk.Frame(self, background='#3B434C')
+		frame.grid(row=2, column=0, columns=2, sticky='NSWE', padx=1, pady=(0, 1))
+		# frame.rowconfigure(0, weight=1)
+		frame.columnconfigure(1, weight=1)
+
+		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Width ', anchor='e', font=('Calibri', 12), image=self.root.pixel, width=50, compound='center').grid(row=1, column=0, sticky='NSWE', padx=(0, 1), pady=0)
+
+		self.width_entry = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		self.width_entry.grid(row=1, column=1, sticky='NSWE', padx=0, pady=0)
+		self.width_entry.insert(0, '29.7')
+
+		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Height ', anchor='e', font=('Calibri', 12), image=self.root.pixel, width=50, compound='center').grid(row=2, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+
+		self.height_entry = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		self.height_entry.grid(row=2, column=1, sticky='NSWE', padx=0, pady=(1, 0))
+		self.width_entry.insert(0, '40')
+
+		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Units ', anchor='e', font=('Calibri', 12), image=self.root.pixel, width=50, compound='center').grid(row=3, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+
+		self.units_selector = CustomComboBox(frame, style='TCombobox', values=['px', 'pt', 'cm', 'mm', 'in'], width=5)
+		self.units_selector.grid(row=3, column=1, sticky='NSWE', padx=0, pady=(1, 0))
+		self.units_selector.set('cm')
+
+		self.expand_x = tk.BooleanVar(self)
+		self.expand_y = tk.BooleanVar(self)
+
+		frame = tk.Frame(self, background='#3B434C')
+		frame.grid(row=4, column=0, columns=2, sticky='NSWE', padx=1, pady=(0, 0))
+		# frame.rowconfigure(0, weight=1)
+		frame.columnconfigure((0, 1), weight=1)
+
+		self.expand_x_toggle = ttk.Checkbutton(frame, style='Custom.TCheckbutton', text='Expand X', variable=self.expand_x)
+		self.expand_x_toggle.grid(row=4, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+
+		self.expand_y_toggle = ttk.Checkbutton(frame, style='Custom.TCheckbutton', text='Expand Y', variable=self.expand_y)
+		self.expand_y_toggle.grid(row=4, column=1, sticky='NSWE', padx=(0, 0), pady=(1, 0))
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Bottom Padding ', font=('Calibri', 12), image=self.root.pixel, width=100, compound='center').grid(row=5, column=0, sticky='NSWE', padx=1, pady=(1, 0))
+
+		self.bottom_padding = ttk.Entry(self, style='stipple.TEntry', width=5)
+		self.bottom_padding.grid(row=5, column=1, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+		self.bottom_padding.insert(0, '5, 15, 25')
+		self.bottom_padding.configure(state='disabled')
+
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Round Corners', font=('Calibri', 12)).grid(row=6, column=0, columns=2, sticky='NSWE', padx=1, pady=(1, 0))
+
+		frame = tk.Frame(self, background='#3B434C')
+		frame.grid(row=7, column=0, columns=2, sticky='NSWE', padx=1, pady=(1, 0))
+		# frame.rowconfigure(0, weight=1)
+		frame.columnconfigure((0, 1), weight=1)
+
+		self.nw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		self.nw_corner_radius.grid(row=7, column=0, sticky='NSWE', padx=0, pady=0)
+		self.nw_corner_radius.insert(0, '5')
+
+		self.ne_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		self.ne_corner_radius.grid(row=7, column=1, sticky='NSWE', padx=(1, 0), pady=0)
+		self.ne_corner_radius.insert(0, '5')
+
+		self.sw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		self.sw_corner_radius.grid(row=8, column=0, sticky='NSWE', padx=0, pady=(1, 0))
+		self.sw_corner_radius.insert(0, '5')
+
+		self.se_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		self.se_corner_radius.grid(row=8, column=1, sticky='NSWE', padx=(1, 0), pady=(1, 0))
+		self.se_corner_radius.insert(0, '5')
+
+		frame = tk.Frame(self, background='#3B434C')
+		frame.grid(row=1, column=2, columns=1, rows=8, sticky='NSWE', padx=0, pady=0)
+		frame.rowconfigure(0, weight=1)
+		frame.columnconfigure(4, weight=1, minsize=500)
+
+		self.vscrollbar = AutoScrollbar(frame, orient='vertical', style='Custom.Vertical.TScrollbar')
+		self.vscrollbar.grid(row=0, column=5, rows=1, sticky='ns')
+
+		self.canvas = tk.Canvas(frame, highlightthickness=0, background='#222', yscrollcommand=self.vscrollbar.set)
+		self.canvas.grid(row=0, column=0, sticky='NSWE', columns=5, padx=(0, 0), pady=1)
+
+		self.vscrollbar.configure(command=self.canvas.yview)
+
+		self.canvas.xview_moveto(0)
+		self.canvas.yview_moveto(0)
+
+		self.formatting_frame = tk.Frame(self.canvas, background='#222')
+
+		self.scrollable_frame = self.canvas.create_window(0, 0, window=self.formatting_frame, anchor='nw')
+
+
+		## From: https://stackoverflow.com/a/16198198
+		def _configure_interior(event):
+			# Update the scrollbars to match the size of the inner frame.
+			size = (self.formatting_frame.winfo_reqwidth(), self.formatting_frame.winfo_reqheight())
+			self.canvas.config(scrollregion="0 0 %s %s" % size)
+			if self.formatting_frame.winfo_reqwidth() != self.canvas.winfo_width():
+				# Update the canvas's width to fit the inner frame.
+				self.canvas.config(width=self.formatting_frame.winfo_reqwidth())
+
+		self.formatting_frame.bind('<Configure>', _configure_interior)
+
+		def _configure_canvas(event):
+			if self.formatting_frame.winfo_reqwidth() != self.canvas.winfo_width():
+				# Update the inner frame's width to fill the canvas.
+				self.canvas.itemconfigure(self.scrollable_frame, width=self.canvas.winfo_width())
+
+		self.canvas.bind('<Configure>', _configure_canvas)
+
+		MouseoverButton(frame, text='+', command=lambda: self.add_formatting(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=20, height=20).grid(row=1, column=0, sticky='nswe', padx=(0, 1), pady=(0, 0))
+		MouseoverButton(frame, text='-', command=lambda: self.remove_formatting(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=20, height=20).grid(row=1, column=1, sticky='nswe', padx=(0, 1), pady=(0, 0))
+
+		self.selected_format_option: Optional[FormattingOption] = None
+		self.formatting_elems = []
+		self.timetable_data = None
+		self.cw = None
+		self.rh = None
+		self.tabledata = None
+		self.tablestyle = None
+		self.read(self.root.filename)
+
+		for i in self.tablestyle:
+			elem = FormattingOption(self, self.formatting_frame, background='#3B434C')
+			elem.pack(side='top', fill='x', padx=1, pady=(1, 0))
+			elem.style_option.set(i[0])
+			elem.x1_entry.insert(0, str(i[1][0]))
+			elem.x2_entry.insert(0, str(i[2][0]))
+			elem.y1_entry.insert(0, str(i[1][1]))
+			elem.y2_entry.insert(0, str(i[2][1]))
+			print(list(i[2:]))
+			elem.value_entry.insert(0, str(list(i[3:]))[1:-1])
+
+			self.formatting_elems.append(elem)
+
+
+	def read(self, input_filename):
+		with open(input_filename, 'r', encoding='utf-8') as input_file:
+			timetable = json.load(input_file)
+
+		self.timetable_data = timetable
+		# document = BaseDocTemplate(output_filename)
+
+		# elems = []
+
+		# title_frame_1 = Frame(0 * cm, 0 * cm, 17.5 * cm, 22.5 * cm, id='col1', showBoundary=0)
+		# title_template_1 = PageTemplate(id='OneCol', frames=title_frame_1)
+		# canvas.addPageTemplates([title_template_1])
+
+		self.cw = [0.625 * cm] + [2 * cm] * 7
+		self.rh = [0.625 * cm]
+
+		self.tabledata = [
+			['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+		]
+		self.tablestyle = [
+			('GRID', (0, 0), (-1, -1), 0.5, HexColor(0x000000)),
+			('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+			('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+			('FONT', (0, 0), (0, -1), 'Calibri-Bold', 7, 7),
+			('FONT', (0, 0), (-1, 0), 'Calibri-Bold', 7, 7),
+			('FONT', (1, 1), (-1, -1), 'Calibri', 7, 7),
+			('BACKGROUND', (0, 0), (-1, 0), HexColor(0xD3D3D3)),
+			('BACKGROUND', (0, 0), (0, -1), HexColor(0xD3D3D3)),
+			('SPAN', (-2, 2), (-2, -1)),
+			('SPAN', (-1, 2), (-1, -1)),
+		]
+
+		# if bottompadding[2]:
+		# 	ts.append(('BOTTOMPADDING', (0, 0), (-1, 0), bottompadding[2]))
+		# if bottompadding[1]:
+		# 	ts.append(('BOTTOMPADDING', (1, 1), (-1, -1), bottompadding[1]))
+
+
+	def convert(self):
+		break_count = 0
+		#
+		# if append:
+		# 	canvas = Canvas(dir_name + '/img2pdf_tmp.pdf', (doc_w, doc_h))
+		# else:
+		# 	canvas = Canvas(output_filename, (doc_w, doc_h))
+		# if not expand[0]:
+		# 	bottompadding = [0, *bottompadding[1:]]
+		# if not expand[1]:
+		# 	bottompadding = [bottompadding[0], 0, 0]
+
+	def add_formatting(self):
+		elem = FormattingOption(self, self.formatting_frame, background='#3B434C')
+		elem.pack(side='top', fill='x', padx=1, pady=(1, 0))
+		self.formatting_elems.append(elem)
+		self.canvas.yview_moveto(10)
+
+	def remove_formatting(self):
+		if self.selected_format_option is not None:
+			idx = self.formatting_elems.index(self.selected_format_option)
+			self.formatting_elems.pop(idx).destroy()
+			if len(self.formatting_elems):
+				self.selected_format_option = self.formatting_elems[max(0, idx - 1)]
+				self.selected_format_option.select()
+# self.page_preview
+
+		# self.format_preview_frame = tk.Frame(self)
+		# self.format_preview_frame.grid(row=8, column=0, sticky='NSWE', padx=1, pady=1)
+		#
+		# self.h_header_preview = tk.Label(self.format_preview_frame, background='#ccc', foreground='#000', text='Monday')
+		# self.h_header_preview.grid(row=0, column=0, sticky='nswe', padx=1, pady=1)
+		#
+		# self.v_header_preview
+		# self.session_break_preview
+		# self.room_preview
+		# self.teacher_preview
+		# self.day_preview
+		#
+		# self.header_font_family
+		# self.header_font_style
+		# self.header_font_size
+		# self.header_font_colour
+		# self.header_background
+		#
+		# self.session_font_family
+		# self.session_font_style
+		# self.session_font_size
+		# self.session_font_colour
+		# self.session_background
+		#
+		# self.cell_font_family
+		# self.cell_font_style
+		# self.cell_font_size
+		# self.cell_font_colour
+		# self.cell_background
+		#
+		# self.table_border_width
+		# self.table_border_colour
+
+
 ## todo: loading bar: ⡿⢿⣻⣽⣾⣷⣯⣟
 
 class IndentText(tk.Text):
@@ -892,7 +1255,6 @@ class TimeTable:
 		return int((now - self.start_timestamp) // (86400 * 7))
 
 	def validate_session(self, now: datetime.datetime, h1: int, m1: int, h2: int, m2: int) -> int:
-		print(h1, m1, h2, m2)
 		if h2 == -1 and m2 == -1:
 			return now.hour > h1 or now.hour == h1 and now.minute > m2
 		elif h1 == h2:
@@ -1377,8 +1739,8 @@ class Window(tk.Tk):
 		self.top_bar = WindowTopbar(self, background='#000')
 		self.top_bar.grid(row=0, column=0, sticky='nswe')
 
-		self.timetable = TimeTable(self, *timetable_data)
-		self.timetable.grid(row=1, column=0, sticky='nswe')
+		# self.timetable = TimeTable(self, *timetable_data)
+		# self.timetable.grid(row=1, column=0, sticky='nswe')
 
 		self.protocol('WM_DELETE_WINDOW', lambda: self.close_handler())
 
@@ -1956,14 +2318,19 @@ about_info += '=' * about_width
 
 if file_val[3]:
 	json_object = json.dumps(DEFAULT_WINDOW_SETTINGS, indent=4, separators=(', ', ': '))
-	with open('window_settings.json', 'w', encoding='utf-8') as file:
-		file.write(json_object)
+	with open('window_settings.json', 'w', encoding='utf-8') as File:
+		File.write(json_object)
 
 window = Window(file_val)
 
 ## Display a warning if using the wrong operating system, otherwise, set DPI awareness
 if platform.system() == 'Windows':
 	ctypes.windll.shcore.SetProcessDpiAwareness(window.settings['resolution_scaling'])
+
+
+m = ExportAsPDFMenu(window)
+
+window.mainloop()
 
 first_time_setup = False
 if file_exists('first_time_setup.txt') and getattr(sys, 'frozen', True):
@@ -1997,12 +2364,12 @@ else:
 		mb.showwarning('Index Error', f'One or more field(s) are missing from "{file_val[10]}".')
 
 if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the settings file and window_settings file.
-	filename = fd.asksaveasfilename(defaultextension='.json', filetypes=(('JSON', '.json'), ('Plain Text', '.txt'), ('All', '*')), initialdir=find_data_file(), initialfile='new_timetable.json', confirmoverwrite=True, parent=window, title='Create new timetable')
-	if filename == "":
+	Filename = fd.asksaveasfilename(defaultextension='.json', filetypes=(('JSON', '.json'), ('Plain Text', '.txt'), ('All', '*')), initialdir=find_data_file(), initialfile='new_timetable.json', confirmoverwrite=True, parent=window, title='Create new timetable')
+	if Filename == "":
 		window.destroy()
 	else:
-		window.filename = filename
-		window.top_bar.filename_display.configure(text=filename)
+		window.filename = Filename
+		window.top_bar.filename_display.configure(text=Filename)
 
 		start_time = window.get_start_week(allow_cancel=True)
 		if start_time is None:
@@ -2011,23 +2378,21 @@ if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the setti
 			window.settings.update({'default.path': window.filename})
 			if not file_exists('settings.json'):
 				json_object = json.dumps(window.settings, indent=4, separators=(', ', ': '))
-				with open('settings.json', 'w', encoding='utf-8') as file:
-					file.write(json_object)
+				with open('settings.json', 'w', encoding='utf-8') as File:
+					File.write(json_object)
 
-			with open(filename, 'w', encoding='utf-8') as file:
-				file.writelines(TIMETABLE_JSON_TEMPLATE % start_time)
+			with open(Filename, 'w', encoding='utf-8') as File:
+				File.writelines(TIMETABLE_JSON_TEMPLATE % start_time)
 
-			timetable_data = read_timetable(filename)
-			if timetable_data is not None:
+			TimetableData = read_timetable(Filename)
+			if TimetableData is not None:
 				window.timetable.destroy()
-				window.timetable = TimeTable(window, *timetable_data)
+				window.timetable = TimeTable(window, *TimetableData)
 				window.timetable.grid(row=1, column=0, sticky='nswe')
 
 ## Check that the window hasn't been destroyed by the code above
 if 'window' in globals():
 	window.update_idletasks()
-	print((window.timetable.display_frame.winfo_height() + window.top_bar.winfo_height()) / 34)
-	print((window.timetable.display_frame.winfo_width()) / 47)
 	size = (window.timetable.display_frame.winfo_width() - 47, window.timetable.display_frame.winfo_height() + window.top_bar.winfo_height() - 34)
 	window.wm_minsize(*size)
 
