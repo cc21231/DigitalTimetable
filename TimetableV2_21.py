@@ -7,6 +7,8 @@ Revision Date : 05-06-2024 13:20
 Dependencies  : null
 =========================================
 """
+import webbrowser
+
 VERSION = '2.21.4'
 import re
 import sys
@@ -227,7 +229,7 @@ class FormattingOption(tk.Frame):
 		self.class_dropdown = CustomComboBox(self, style='TCombobox', textvariable=self.style_option, values=['GRID', 'ALIGN', 'VALIGN', 'FONT', 'TOPPADDING', 'FONTSIZE', 'TEXTCOLOR', 'BACKGROUND', 'SPAN', 'BOTTOMPADDING'])
 		self.class_dropdown.pack(side='left', fill='y', padx=1, pady=1)#.grid(row=0, column=0, sticky='NSWE', padx=(1, 1), pady=1)
 
-		tk.Frame(self, background='#222', width=12).pack(side='left', fill='y')#.grid(row=0, column=1, sticky='NSWE', pady=0)
+		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')#.grid(row=0, column=1, sticky='NSWE', pady=0)
 
 		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=2, sticky='NSWE', padx=(1, 0), pady=1)
 
@@ -241,7 +243,7 @@ class FormattingOption(tk.Frame):
 		self.y1_entry.configure(invalidcommand=lambda: self.invalid_input(self.y1_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.y1_entry, 'y'))
 		self.y1_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)#.grid(row=0, column=5, sticky='NSWE', padx=(1, 0), pady=1)
 
-		tk.Frame(self, background='#222', width=12).pack(side='left', fill='y')#.grid(row=0, column=6, sticky='NSWE', pady=0)
+		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')#.grid(row=0, column=6, sticky='NSWE', pady=0)
 
 
 		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=7, sticky='NSWE', padx=(1, 0), pady=1)
@@ -256,7 +258,7 @@ class FormattingOption(tk.Frame):
 		self.y2_entry.configure(invalidcommand=lambda: self.invalid_input(self.y2_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.y2_entry, 'y'))
 		self.y2_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)#.grid(row=0, column=9, sticky='NSWE', padx=(1, 1), pady=1)
 
-		tk.Frame(self, background='#222', width=12).pack(side='left', fill='y')#.grid(row=0, column=10, sticky='NSWE', pady=0)
+		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')#.grid(row=0, column=10, sticky='NSWE', pady=0)
 
 		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Value ', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=11, sticky='NSWE', padx=(1, 0), pady=1)
 
@@ -290,7 +292,7 @@ class FormattingOption(tk.Frame):
 
 	def validate_pos(self, elem, mode):
 		val = elem.get()
-		if not val.isnumeric():
+		if not val.removeprefix('-').isnumeric():
 			return False
 
 		if mode == 'x':
@@ -317,8 +319,43 @@ class FormattingOption(tk.Frame):
 		except:
 			return False
 
+
 from reportlab.lib.colors import HexColor
-from reportlab.lib.units import cm
+from reportlab.lib.colors import Color
+from reportlab.lib import units
+from reportlab.platypus import Table
+from reportlab.platypus.flowables import Flowable
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.pdfbase.ttfonts import TTFont
+
+## todo: add font, colours, margin, to export PDF
+
+class verticalText(Flowable):
+	'''
+	Rotates a text in a table cell.
+	From: https://stackoverflow.com/a/40349017
+	'''
+
+	def __init__(self, text, bottompadding=0):
+		Flowable.__init__(self)
+		self.text = text
+		self.bottompadding = bottompadding
+
+	def draw(self):
+		canvas = self.canv
+		canvas.rotate(90)
+		fs = canvas._fontsize
+		canvas.translate(1, -fs/1.2)  # canvas._leading?
+		canvas.drawString(0, self.bottompadding, self.text)
+
+	def wrap(self, aW, aH):
+		canv = self.canv
+		fn, fs = canv._fontname, canv._fontsize
+		return canv._leading, 1 + canv.stringWidth(self.text, fn, fs)
+
+
+
 
 
 class ExportAsPDFMenu(tk.Toplevel):
@@ -326,113 +363,281 @@ class ExportAsPDFMenu(tk.Toplevel):
 		super().__init__(*args, **kwargs)
 		self.root = root
 		# self.page_preset = tk.StringVar(self)
-		self.configure(background='#3B434C')
+		self.configure(background='#222', padx=1, pady=1)
 		self.columnconfigure(2, weight=1)
-		self.rowconfigure(2, weight=1)
+		self.rowconfigure(10, weight=1)
 
-		frame = tk.Frame(self, background='#3B434C')
-		frame.grid(row=0, column=0, columns=3, sticky='NSWE', padx=1, pady=(1, 0))
+		frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
+		frame.grid(row=0, column=0, columns=3, sticky='NSWE', padx=0, pady=(0, 0))
 		# frame.rowconfigure(0, weight=1)
 		frame.columnconfigure(1, weight=1)
 
-		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Output File', anchor='e', image=self.root.pixel, font=('Calibri', 12), width=70, compound='center').grid(row=0, column=0, sticky='NSWE', padx=(0, 1), pady=0)
+		labelconfig = dict(background='#303841', foreground='#D8DEE9', image=self.root.pixel, font=('Calibri', 11), compound='center', height=14)
+
+		tk.Label(frame, text='Output File', width=60, **labelconfig).grid(row=0, column=0, sticky='NSWE', padx=(0, 1), pady=0)
 
 		self.filename_entry = ttk.Entry(frame, style='stipple.TEntry')
 		self.filename_entry.grid(row=0, column=1, sticky='NSWE', padx=(0, 1), pady=0)
+		self.filename_entry.insert(0, self.root.filename.removesuffix('.json').removesuffix('.txt') + '.pdf')
 
 		MouseoverButton(frame, command=lambda: self.browse_filename(), background='#303841', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, image=self.root.icons['load'], compound='center', highlightthickness=1, highlightbackground='#4F565E', width=25, anchor='center', height=20).grid(row=0, column=2, sticky='nswe', padx=(0, 0), pady=0)
 
-		self.presets_selector = CustomComboBox(self, style='TCombobox', values=['A4 (Portrait)', 'A5 (Portrait)', 'A4 (Landscape)', 'A5 (Landscape)'], width=5)
-		self.presets_selector.grid(row=1, column=0, sticky='NSWE', padx=1, pady=1, columnspan=2)
+		format_options_frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
+		format_options_frame.grid(row=1, column=0, columns=2, sticky='nswe', padx=0, pady=(7, 0))
+
+
+		# frame = tk.Frame(self, background='#3B434C')
+		# frame.grid(row=2, column=0, columns=2, sticky='NSWE', padx=(1, 0), pady=(0, 1))
+		# frame.rowconfigure(0, weight=1)
+		# frame.columnconfigure((0, 2), weight=1)
+		# tk.Frame(format_options_frame, background='#222', height=7).pack(side='top', fill='both', expand=True)
+		tk.Label(format_options_frame, text='Page Size', **labelconfig).pack(side='top', padx=(0, 0), pady=(0, 1), fill='x')
+		tk.Frame(format_options_frame, background='#222', height=1).pack(side='top', fill='both', pady=(0, 1))
+
+		self.presets_selector = CustomComboBox(format_options_frame, style='TCombobox', values=['A4 (Portrait)', 'A5 (Portrait)', 'A4 (Landscape)', 'A5 (Landscape)'], width=5)
+		self.presets_selector.pack(side='top', padx=(0, 0), pady=(0, 1), fill='x')
 		self.presets_selector.set('A4 (Portrait)')
 
-		frame = tk.Frame(self, background='#3B434C')
-		frame.grid(row=2, column=0, columns=2, sticky='NSWE', padx=1, pady=(0, 1))
-		# frame.rowconfigure(0, weight=1)
-		frame.columnconfigure(1, weight=1)
-
-		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Width ', anchor='e', font=('Calibri', 12), image=self.root.pixel, width=50, compound='center').grid(row=1, column=0, sticky='NSWE', padx=(0, 1), pady=0)
-
-		self.width_entry = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.width_entry.grid(row=1, column=1, sticky='NSWE', padx=0, pady=0)
+		self.width_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.width_entry.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
 		self.width_entry.insert(0, '29.7')
 
-		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Height ', anchor='e', font=('Calibri', 12), image=self.root.pixel, width=50, compound='center').grid(row=2, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+		tk.Label(format_options_frame, text='x', width=10, **labelconfig).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
-		self.height_entry = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.height_entry.grid(row=2, column=1, sticky='NSWE', padx=0, pady=(1, 0))
-		self.width_entry.insert(0, '40')
+		self.height_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.height_entry.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.height_entry.insert(0, '40')
 
-		tk.Label(frame, background='#303841', foreground='#D8DEE9', text='Units ', anchor='e', font=('Calibri', 12), image=self.root.pixel, width=50, compound='center').grid(row=3, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+		self.page_units = CustomComboBox(format_options_frame, style='TCombobox', values=['px', 'pt', 'cm', 'mm', 'in'], width=3)
+		self.page_units.pack(side='left', padx=0, pady=0, fill='both')
+		self.page_units.set('cm')
 
-		self.units_selector = CustomComboBox(frame, style='TCombobox', values=['px', 'pt', 'cm', 'mm', 'in'], width=5)
-		self.units_selector.grid(row=3, column=1, sticky='NSWE', padx=0, pady=(1, 0))
-		self.units_selector.set('cm')
+		# tk.Frame(frame, background='#303841').grid(row=3, column=0, columns=2, sticky='nswe')
+		#
+		format_options_frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
+		format_options_frame.grid(row=2, column=0, columns=2, sticky='nswe', padx=0, pady=(7, 0))
 
-		self.expand_x = tk.BooleanVar(self)
-		self.expand_y = tk.BooleanVar(self)
+		# tk.Frame(format_options_frame, background='#222', height=7).pack(side='top', fill='both', expand=True)
+		tk.Label(format_options_frame, text='Table Size', **labelconfig).pack(side='top', anchor='w', padx=0, pady=0, fill='x')
+		tk.Frame(format_options_frame, background='#222', height=1).pack(side='top', fill='both', pady=(0, 1))
 
-		frame = tk.Frame(self, background='#3B434C')
-		frame.grid(row=4, column=0, columns=2, sticky='NSWE', padx=1, pady=(0, 0))
-		# frame.rowconfigure(0, weight=1)
-		frame.columnconfigure((0, 1), weight=1)
+		self.table_width_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.table_width_entry.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.table_width_entry.insert(0, 'Auto')
 
-		self.expand_x_toggle = ttk.Checkbutton(frame, style='Custom.TCheckbutton', text='Expand X', variable=self.expand_x)
-		self.expand_x_toggle.grid(row=4, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+		tk.Label(format_options_frame, text='x', width=10, **labelconfig).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
-		self.expand_y_toggle = ttk.Checkbutton(frame, style='Custom.TCheckbutton', text='Expand Y', variable=self.expand_y)
-		self.expand_y_toggle.grid(row=4, column=1, sticky='NSWE', padx=(0, 0), pady=(1, 0))
+		self.table_height_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.table_height_entry.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.table_height_entry.insert(0, 'Auto')
 
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Bottom Padding ', font=('Calibri', 12), image=self.root.pixel, width=100, compound='center').grid(row=5, column=0, sticky='NSWE', padx=1, pady=(1, 0))
+		self.table_units = CustomComboBox(format_options_frame, style='TCombobox', values=['px', 'pt', 'cm', 'mm', 'in', '%'], width=3)
+		self.table_units.pack(side='left', padx=0, pady=0, fill='both')
+		self.table_units.set('cm')
 
-		self.bottom_padding = ttk.Entry(self, style='stipple.TEntry', width=5)
-		self.bottom_padding.grid(row=5, column=1, sticky='NSWE', padx=(0, 1), pady=(1, 0))
-		self.bottom_padding.insert(0, '5, 15, 25')
-		self.bottom_padding.configure(state='disabled')
+		format_options_frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
+		format_options_frame.grid(row=3, column=0, columns=2, sticky='nswe', padx=0, pady=(7, 0))
 
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Round Corners', font=('Calibri', 12)).grid(row=6, column=0, columns=2, sticky='NSWE', padx=1, pady=(1, 0))
+		# tk.Frame(format_options_frame, background='#222', height=7).pack(side='top', fill='both', expand=True)
+		tk.Label(format_options_frame, text='Margins', **labelconfig).pack(side='top', padx=0, pady=(0, 0), fill='x')
+		tk.Frame(format_options_frame, background='#222', height=1).pack(side='top', fill='both', pady=(0, 1))
 
-		frame = tk.Frame(self, background='#3B434C')
-		frame.grid(row=7, column=0, columns=2, sticky='NSWE', padx=1, pady=(1, 0))
-		# frame.rowconfigure(0, weight=1)
-		frame.columnconfigure((0, 1), weight=1)
+		tk.Label(format_options_frame, text='↔', width=15, **labelconfig).pack(side='left', padx=(0, 1), pady=0, fill='y')
+
+		self.h_margin_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.h_margin_entry.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.h_margin_entry.insert(0, 'Auto')
+
+		tk.Label(format_options_frame, text='↕', width=15, **labelconfig).pack(side='left', padx=(0, 1), pady=0, fill='y')
+
+		self.v_margin_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.v_margin_entry.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.v_margin_entry.insert(0, 'Auto')
+
+		self.margin_units = CustomComboBox(format_options_frame, style='TCombobox', values=['px', 'pt', 'cm', 'mm', 'in', '%'], width=3)
+		self.margin_units.pack(side='left', padx=0, pady=0, fill='both')
+		self.margin_units.set('cm')
+
+		format_options_frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
+		format_options_frame.grid(row=4, column=0, columns=2, sticky='nswe', padx=0, pady=(7, 0))
+
+		# tk.Frame(format_options_frame, background='#222', height=7).pack(side='top', fill='both', expand=True)
+		tk.Label(format_options_frame, text='Bottom Padding', **labelconfig).pack(side='top', padx=0, pady=(0, 0), fill='x')
+		tk.Frame(format_options_frame, background='#222', height=1).pack(side='top', fill='both', pady=(0, 1))
+
+		self.bottom_padding_0 = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.bottom_padding_0.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.bottom_padding_0.insert(0, '5')
+
+		self.bottom_padding_1 = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.bottom_padding_1.pack(side='left', padx=(0, 1), pady=0, expand=True, fill='both')
+		self.bottom_padding_1.insert(0, '15')
+
+		self.bottom_padding_2 = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
+		self.bottom_padding_2.pack(side='left', padx=(0, 0), pady=0, expand=True, fill='both')
+		self.bottom_padding_2.insert(0, '25')
+		# self.bottom_padding_1.configure(state='disabled')
+
+		# tk.Frame(format_options_frame, background='#222', height=7).pack(side='bottom', fill='both', expand=True)
+
+		format_options_frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
+		format_options_frame.grid(row=5, column=0, columns=2, sticky='nswe', padx=0, pady=(7, 0))
+
+		# tk.Frame(format_options_frame, background='#222', height=7).pack(side='top', fill='both', expand=True)
+		tk.Label(format_options_frame, text='Round Corners', **labelconfig).pack(side='top', padx=0, pady=(0, 0), fill='x')
+		tk.Frame(format_options_frame, background='#222', height=1).pack(side='top', fill='both', pady=(0, 1))
+
+		self.margin_units = CustomComboBox(format_options_frame, style='TCombobox', values=['px', 'pt', 'cm', 'mm', 'in', '%'], width=3)
+		self.margin_units.pack(side='top', padx=0, pady=(0, 1), fill='both')
+		self.margin_units.set('cm')
+
+		frame = tk.Frame(format_options_frame, background='#3B434C')
+		frame.pack(side='top', expand=True, fill='both')
+
+		tk.Label(frame, text='◴', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.nw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.nw_corner_radius.grid(row=7, column=0, sticky='NSWE', padx=0, pady=0)
-		self.nw_corner_radius.insert(0, '5')
+		self.nw_corner_radius.pack(side='left', padx=(0, 1), expand=True, fill='both')
+		self.nw_corner_radius.insert(0, '5.0')
+
+		tk.Label(frame, text='◷', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.ne_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.ne_corner_radius.grid(row=7, column=1, sticky='NSWE', padx=(1, 0), pady=0)
-		self.ne_corner_radius.insert(0, '5')
+		self.ne_corner_radius.pack(side='left', padx=(0, 0), expand=True, fill='both')
+		self.ne_corner_radius.insert(0, '5.0')
+
+		frame = tk.Frame(format_options_frame, background='#3B434C')
+		frame.pack(side='top', expand=True, fill='both')
+
+		tk.Label(frame, text='◵', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.sw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.sw_corner_radius.grid(row=8, column=0, sticky='NSWE', padx=0, pady=(1, 0))
-		self.sw_corner_radius.insert(0, '5')
+		self.sw_corner_radius.pack(side='left', padx=(0, 1), expand=True, fill='both')
+		self.sw_corner_radius.insert(0, '5.0')
+
+		tk.Label(frame, text='◶', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.se_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.se_corner_radius.grid(row=8, column=1, sticky='NSWE', padx=(1, 0), pady=(1, 0))
-		self.se_corner_radius.insert(0, '5')
+		self.se_corner_radius.pack(side='left', padx=(0, 0), expand=True, fill='both')
+		self.se_corner_radius.insert(0, '5.0')
 
-		frame = tk.Frame(self, background='#3B434C')
-		frame.grid(row=1, column=2, columns=1, rows=8, sticky='NSWE', padx=0, pady=0)
-		frame.rowconfigure(0, weight=1)
-		frame.columnconfigure(4, weight=1, minsize=500)
+		self.match_corner_radius = tk.BooleanVar(self, True)
+		ttk.Checkbutton(format_options_frame, style='Custom.TCheckbutton', text='Match Radius', variable=self.match_corner_radius).pack(side='top', fill='both', pady=(0, 1))
 
-		self.vscrollbar = AutoScrollbar(frame, orient='vertical', style='Custom.Vertical.TScrollbar')
-		self.vscrollbar.grid(row=0, column=5, rows=1, sticky='ns')
 
-		self.canvas = tk.Canvas(frame, highlightthickness=0, background='#222', yscrollcommand=self.vscrollbar.set)
-		self.canvas.grid(row=0, column=0, sticky='NSWE', columns=5, padx=(0, 0), pady=1)
+		# tk.Frame(self, background='#222', height=7).grid(row=5, column=0, columns=2, sticky='NSWE', pady=(1, 0))
+
+
+		# self.expand_x = tk.BooleanVar(self)
+		# self.expand_y = tk.BooleanVar(self)
+
+		# frame = tk.Frame(self, background='#3B434C')
+		# frame.grid(row=4, column=0, columns=2, sticky='NSWE', padx=1, pady=(0, 0))
+		# frame.rowconfigure(0, weight=1)
+		# frame.columnconfigure((0, 1), weight=1)
+
+		# self.expand_x_toggle = ttk.Checkbutton(frame, style='Custom.TCheckbutton', text='Expand X', variable=self.expand_x)
+		# self.expand_x_toggle.grid(row=4, column=0, sticky='NSWE', padx=(0, 1), pady=(1, 0))
+		#
+		# self.expand_y_toggle = ttk.Checkbutton(frame, style='Custom.TCheckbutton', text='Expand Y', variable=self.expand_y)
+		# self.expand_y_toggle.grid(row=4, column=1, sticky='NSWE', padx=(0, 0), pady=(1, 0))
+
+		# tk.Label(self, text='Bottom Padding', width=100, **labelconfig).grid(row=5, column=0, sticky='NSWE', padx=1, pady=(1, 0))
+		#
+		# self.bottom_padding = ttk.Entry(self, style='stipple.TEntry', width=5)
+		# self.bottom_padding.grid(row=5, column=1, sticky='NSWE', padx=(0, 0), pady=(1, 0))
+		# self.bottom_padding.insert(0, '5, 15, 25')
+		# self.bottom_padding.configure(state='disabled')
+
+		# tk.Label(self, background='#303841', foreground='#D8DEE9', text='Round Corners', font=('Calibri', 12)).grid(row=6, column=0, columns=2, sticky='NSWE', padx=(1, 0), pady=(1, 0))
+		#
+		# frame = tk.Frame(self, background='#3B434C')
+		# frame.grid(row=7, column=0, columns=2, sticky='NSWE', padx=(1, 0), pady=(1, 0))
+		# # frame.rowconfigure(0, weight=1)
+		# frame.columnconfigure((0, 1), weight=1)
+		#
+		# self.nw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		# self.nw_corner_radius.grid(row=7, column=0, sticky='NSWE', padx=0, pady=0)
+		# self.nw_corner_radius.insert(0, '5')
+		#
+		# self.ne_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		# self.ne_corner_radius.grid(row=7, column=1, sticky='NSWE', padx=(1, 0), pady=0)
+		# self.ne_corner_radius.insert(0, '5')
+		#
+		# self.sw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		# self.sw_corner_radius.grid(row=8, column=0, sticky='NSWE', padx=0, pady=(1, 1))
+		# self.sw_corner_radius.insert(0, '5')
+		#
+		# self.se_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
+		# self.se_corner_radius.grid(row=8, column=1, sticky='NSWE', padx=(1, 0), pady=(1, 1))
+		# self.se_corner_radius.insert(0, '5')
+
+		frame = tk.Frame(self, background='#222')
+		frame.grid(row=1, column=2, columns=1, rows=7, sticky='NSWE', padx=(10, 0), pady=(7, 0))
+		frame.rowconfigure(1, weight=1)
+		frame.columnconfigure(1, weight=1, minsize=500)
+
+		tk.Label(frame, text='Formatting', **labelconfig, highlightthickness=1, highlightbackground='#3B434C').grid(row=0, column=0, columns=3, sticky='NSWE', pady=(0, 1))
+
+		self.vscrollbar = ttk.Scrollbar(frame, orient='vertical', style='Custom.Vertical.TScrollbar')
+		self.vscrollbar.grid(row=1, column=2, sticky='ns', padx=(0, 0), pady=0)
+
+		self.canvas = tk.Canvas(frame, highlightthickness=1, background='#000', yscrollcommand=self.vscrollbar.set, highlightbackground='#3B434C')
+		self.canvas.grid(row=1, column=0, columns=2, sticky='NSWE', padx=(0, 1), pady=0)
 
 		self.vscrollbar.configure(command=self.canvas.yview)
 
 		self.canvas.xview_moveto(0)
 		self.canvas.yview_moveto(0)
 
-		self.formatting_frame = tk.Frame(self.canvas, background='#222')
+		self.formatting_frame = tk.Frame(self.canvas, background='#000')
 
 		self.scrollable_frame = self.canvas.create_window(0, 0, window=self.formatting_frame, anchor='nw')
 
+		frame1 = tk.Frame(frame, background='#3B434C')
+		frame1.grid(row=2, column=0, sticky='nsw', padx=(0, 1), pady=(1, 0))
+		MouseoverButton(frame1, text='+', command=lambda: self.add_formatting(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=18, height=18).pack(side='left', padx=(1, 1), pady=(1, 1))
+
+		frame1 = tk.Frame(frame, background='#3B434C')
+		frame1.grid(row=2, column=1, sticky='nsw', padx=(0, 0), pady=(1, 0))
+		# frame = tk.Frame(frame, background='#3B434C')
+		# frame.pack(side='left', padx=1, pady=(1, 0))
+		# tk.Frame(frame, background='#222').grid(row=1, column=3, columns=2, sticky='nswe', padx=(0, 0), pady=(0, 0))
+		## todo: rm ah
+		MouseoverButton(frame1, text='-', command=lambda: self.remove_formatting(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=18, height=18).pack(side='left', padx=(1, 1), pady=(1, 1))
+
+
+		frame = tk.Frame(self, background='#3B434C')
+		frame.grid(row=9, column=0, columns=3, sticky='NSWE', padx=1, pady=(0, 0))
+		frame.rowconfigure(0, weight=1)
+		frame.columnconfigure(0, weight=1)
+
+		tk.Frame(frame, background='#222').pack(side='left', fill='both', expand=True)
+
+		MouseoverButton(frame, text='Cancel', command=lambda: self.destroy(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=50, height=20).pack(side='left', padx=(1, 0), fill='y', pady=1)  # .grid(row=1, column=1, sticky='nswe', padx=(0, 1), pady=(0, 0))
+		MouseoverButton(frame, text='Export', command=lambda: self.convert(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=50, height=20).pack(side='left', padx=(1, 1), fill='y', pady=1)  # .grid(row=1, column=0, sticky='nswe', padx=(0, 1), pady=(0, 0))
+
+
+		self.selected_format_option: Optional[FormattingOption] = None
+		self.formatting_elems = []
+		self.timetable_data = None
+		# self.cw = None
+		# self.rh = None
+		self.tablestyle = None
+		self.read(self.root.filename)
+
+		for i in self.tablestyle:
+			elem = FormattingOption(self, self.formatting_frame, background='#3B434C')
+			elem.pack(side='top', fill='x', padx=1, pady=(1, 0))
+			elem.style_option.set(i[0])
+			elem.x1_entry.insert(0, str(i[1][0]))
+			elem.x2_entry.insert(0, str(i[2][0]))
+			elem.y1_entry.insert(0, str(i[1][1]))
+			elem.y2_entry.insert(0, str(i[2][1]))
+			print(list(i[2:]))
+			elem.value_entry.insert(0, str(list(i[3:]))[1:-1])
+
+			self.formatting_elems.append(elem)
 
 		## From: https://stackoverflow.com/a/16198198
 		def _configure_interior(event):
@@ -452,32 +657,6 @@ class ExportAsPDFMenu(tk.Toplevel):
 
 		self.canvas.bind('<Configure>', _configure_canvas)
 
-		MouseoverButton(frame, text='+', command=lambda: self.add_formatting(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=20, height=20).grid(row=1, column=0, sticky='nswe', padx=(0, 1), pady=(0, 0))
-		MouseoverButton(frame, text='-', command=lambda: self.remove_formatting(), background='#303841', foreground='#D8DEE9', activebackground='#303841', mouseoverbackground='#3B434C', borderwidth=0, font=('Calibri', 12), image=self.root.pixel, compound='center', highlightthickness=1, highlightbackground='#4F565E', width=20, height=20).grid(row=1, column=1, sticky='nswe', padx=(0, 1), pady=(0, 0))
-
-		self.selected_format_option: Optional[FormattingOption] = None
-		self.formatting_elems = []
-		self.timetable_data = None
-		self.cw = None
-		self.rh = None
-		self.tabledata = None
-		self.tablestyle = None
-		self.read(self.root.filename)
-
-		for i in self.tablestyle:
-			elem = FormattingOption(self, self.formatting_frame, background='#3B434C')
-			elem.pack(side='top', fill='x', padx=1, pady=(1, 0))
-			elem.style_option.set(i[0])
-			elem.x1_entry.insert(0, str(i[1][0]))
-			elem.x2_entry.insert(0, str(i[2][0]))
-			elem.y1_entry.insert(0, str(i[1][1]))
-			elem.y2_entry.insert(0, str(i[2][1]))
-			print(list(i[2:]))
-			elem.value_entry.insert(0, str(list(i[3:]))[1:-1])
-
-			self.formatting_elems.append(elem)
-
-
 	def read(self, input_filename):
 		with open(input_filename, 'r', encoding='utf-8') as input_file:
 			timetable = json.load(input_file)
@@ -491,12 +670,6 @@ class ExportAsPDFMenu(tk.Toplevel):
 		# title_template_1 = PageTemplate(id='OneCol', frames=title_frame_1)
 		# canvas.addPageTemplates([title_template_1])
 
-		self.cw = [0.625 * cm] + [2 * cm] * 7
-		self.rh = [0.625 * cm]
-
-		self.tabledata = [
-			['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-		]
 		self.tablestyle = [
 			('GRID', (0, 0), (-1, -1), 0.5, HexColor(0x000000)),
 			('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -510,23 +683,155 @@ class ExportAsPDFMenu(tk.Toplevel):
 			('SPAN', (-1, 2), (-1, -1)),
 		]
 
+	## todo: add margins
 		# if bottompadding[2]:
 		# 	ts.append(('BOTTOMPADDING', (0, 0), (-1, 0), bottompadding[2]))
 		# if bottompadding[1]:
 		# 	ts.append(('BOTTOMPADDING', (1, 1), (-1, -1), bottompadding[1]))
 
+	# def validate_units(self):
+	# 	return self.units_selector.get() in ['cm', 'mm', 'in', 'px', 'pt']
+
 
 	def convert(self):
-		break_count = 0
-		#
 		# if append:
 		# 	canvas = Canvas(dir_name + '/img2pdf_tmp.pdf', (doc_w, doc_h))
 		# else:
-		# 	canvas = Canvas(output_filename, (doc_w, doc_h))
-		# if not expand[0]:
+		output_filename = self.filename_entry.get()
+		if not output_filename.endswith('.pdf'):
+			output_filename += '.pdf'
+
+		self.tablestyle = []
+		for i in self.formatting_elems:
+			# print(f'[{i.value_entry.get()}]')
+			line = [i.style_option.get(), (int(i.x1_entry.get()), int(i.y1_entry.get())), (int(i.x2_entry.get()), int(i.y2_entry.get())), *eval(f'[{i.value_entry.get()}]')]
+			self.tablestyle.append(line)
+
+		unit = {'cm': units.cm, 'mm': units.mm, 'pt': units.pica, 'px': 1, 'in': units.inch}[self.units_selector.get()]
+		doc_w = float(self.width_entry.get()) * unit
+		doc_h = float(self.height_entry.get()) * unit
+
+		margin = [1.5 * units.cm, 1.5 * units.cm]
+
+		if self.table_width_entry.get().lower() == 'auto':
+			tablewidth = doc_w - margin[0] * 2
+		else:
+			tablewidth = float(self.table_width_entry.get()) * unit
+
+		if self.table_height_entry.get().lower() == 'auto':
+			tableheight = doc_h - margin[1] * 2
+		else:
+			tableheight = float(self.table_height_entry.get()) * unit
+
+		session_types = [v[1] for v in self.timetable_data['sessions']]
+
+		## Get relative column widths and row heights
+		cw = [0.6] + [2] * 7
+		rh = [0.6] + [0.5] * (3 * sum(session_types) + session_types.count(False))
+		print(tableheight, tablewidth, sum(rh) * unit, sum(cw) * unit)
+
+		h_scale = tablewidth / (sum(cw) * unit)
+		v_scale = tableheight / (sum(rh) * unit)
+
+		cw = [v * h_scale * unit for v in cw]
+		rh = [v * v_scale * unit for v in rh]
+		print('cw', cw, 'rh', rh)
+
+		canvas = Canvas(output_filename, (doc_w, doc_h))
+
+		data = [
+			['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+		]
+
+		bottompadding = eval(f'[{self.bottom_padding.get()}]')
+
+		# if not self.expand_x.get():
 		# 	bottompadding = [0, *bottompadding[1:]]
-		# if not expand[1]:
+		# if not self.expand_y.get():
 		# 	bottompadding = [bottompadding[0], 0, 0]
+
+		break_count = 0
+
+		for n, i in enumerate(self.timetable_data['sessions']):
+			if i[1]:
+				line_data = [[verticalText(i[0], bottompadding[0])], [''], ['']]
+				self.tablestyle.extend([('SPAN', (0, len(data)), (0, len(data) + 2)), ('FONT', (1, len(data)), (-1, len(data)), 'Calibri-Bold', 7, 7)])
+				for day_num, day in enumerate(self.timetable_data['timetable']):
+					# print(day, n)
+					class_index = day[n - break_count]
+					line_data[0].append(self.timetable_data['classes'][class_index])
+					line_data[1].append(self.timetable_data['teachers'][class_index])
+					line_data[2].append(self.timetable_data['rooms'][class_index])
+				line_data[0].extend(['', ''])
+				line_data[1].extend(['', ''])
+				line_data[2].extend(['', ''])
+
+				data.extend(line_data)
+			else:
+				break_count += 1
+				line_data = [i[0]] + [''] * 5
+				self.tablestyle.extend([('SPAN', (0, len(data)), (-3, len(data))), ('FONT', (1, len(data)), (-1, len(data)), 'Calibri-Bold'), ('BACKGROUND', (1, len(data)), (-3, len(data)), HexColor(0xD3D3D3))])
+				if bottompadding[2]:
+					self.tablestyle.append(('BOTTOMPADDING', (0, len(data)), (-3, len(data)), bottompadding[2]))
+				data.append(line_data)
+		data[1][-1] = 'Homework'
+		data[1][-2] = 'Homework'
+
+		pdfmetrics.registerFont(TTFont(f'Calibri-Bold', 'calibrib.ttf'))
+		pdfmetrics.registerFont(TTFont(f'Calibri', 'calibri.ttf'))
+		# for i in data:
+		# 	print(i)
+
+		# if expand[0]:
+		# 	total_w = doc_w - offset[0] * 2
+		# 	size_scale = total_w/sum(cw)#*len(cw)
+		# 	cw = [(i * size_scale) for i in cw]
+		# 	print(size_scale, 'sc')
+		# if expand[1]:
+		# 	total_h = doc_h - offset[1] * 2
+		# 	size_scale = total_h/sum(rh)#*len(rh)
+		# 	rh = [(i * size_scale) for i in rh]
+		# 	print(size_scale, 'sc')
+
+		# if self.expand_x.get():
+		header_size = 1
+		face = pdfmetrics.getFont('Calibri-Bold').face
+		h_height = (face.ascent - face.descent) / 1000 * (header_size + 0.5)
+		while h_height < rh[0]/2:
+			header_size += 0.5
+			h_height = (face.ascent - face.descent) / 1000 * (header_size + 0.5)
+
+		# print(face.descent, 'hh', rh[0] - (face.ascent - face.descent) / 1000 * header_size)
+
+		body_size = 1
+		face = pdfmetrics.getFont('Calibri').face
+		b_height = (face.ascent - face.descent) / 1000 * (body_size + 0.5)
+		while b_height < rh[1]/2:
+			body_size += 0.5
+			b_height = (face.ascent - face.descent) / 1000 * (body_size + 0.5)
+		print(0.625 * units.cm, (face.ascent - face.descent) / 1000 * 6)
+			# print(face.descent, 'fd', b_height)
+
+		self.tablestyle.extend([
+			('FONTSIZE', (0, 0), (0, -1), header_size),
+			('FONTSIZE', (0, 0), (-1, 0), header_size),
+			('FONTSIZE', (1, 1), (-1, -1), body_size),
+		])
+
+		table = Table(
+			data, style=self.tablestyle,
+			colWidths=cw, rowHeights=rh,
+			cornerRadii=(int(self.nw_corner_radius.get()) if self.nw_corner_radius.get() else 0, int(self.ne_corner_radius.get()) if self.ne_corner_radius.get() else 0, int(self.sw_corner_radius.get()) if self.sw_corner_radius.get() else 0, int(self.se_corner_radius.get()) if self.se_corner_radius.get() else 0)
+		)
+		table.wrapOn(canvas, doc_w, doc_h)
+		table.drawOn(canvas, margin[0], doc_h - margin[1] - tableheight)
+		canvas.save()
+
+		mb.showinfo('Success', f'Successfully converted {self.root.filename} to PDF.')
+
+		webbrowser.open('file://' + self.filename_entry.get())
+
+		self.destroy()
 
 	def add_formatting(self):
 		elem = FormattingOption(self, self.formatting_frame, background='#3B434C')
