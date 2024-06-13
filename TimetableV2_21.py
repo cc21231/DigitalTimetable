@@ -92,7 +92,7 @@ class CustomRadiobutton(tk.Radiobutton):
 	def __init__(self, *args, **kwargs) -> None:
 		self.selectforeground = kwargs.pop('selectforeground') if 'selectforeground' in kwargs else None
 		super().__init__(*args, **kwargs)
-		self.variable = self.cget('variable')
+		self.variable = kwargs['variable'] if 'variable' in kwargs else None
 		self.normalforeground = self.cget('foreground')
 
 		kwargs['variable'].trace_add('write', lambda name, index, mode: self.change_val())  # Add a trace to the radiobutton's variable to call the `change_val` function whenever the variable's value is changed
@@ -104,6 +104,7 @@ class CustomRadiobutton(tk.Radiobutton):
 		Called whenever the value of the radiobutton variable changes. Updates the foreground and background colour of the widget
 		"""
 
+		print(type(self.variable))
 		if self.variable.get() == self.cget('value'):
 			self.configure(foreground=self.selectforeground, background='#2E3274')
 		else:
@@ -1370,6 +1371,7 @@ class TimeTable:
 		self.formatting_frame.grid(row=0, column=0, sticky='NSWE', padx=1, pady=(1, 0))
 
 		self.numbering_format = tk.IntVar(self.display_frame, 0)
+		print(self.numbering_format.get())
 
 		self.entry_font = tkfont.Font(family=self.master.settings['editor.font'][0], size=self.master.settings['editor.font'][1], weight='bold' if 'bold' in self.master.settings['editor.font'][2] else 'normal', slant='italic' if 'italic' in self.master.settings['editor.font'][2] else 'roman')
 
@@ -2033,8 +2035,8 @@ class Window(tk.Tk):
 		self.top_bar = WindowTopbar(self, background='#000')
 		self.top_bar.grid(row=0, column=0, sticky='nswe')
 
-		# self.timetable = TimeTable(self, *timetable_data)
-		# self.timetable.grid(row=1, column=0, sticky='nswe')
+		self.timetable = TimeTable(self, *timetable_data)
+		self.timetable.grid(row=1, column=0, sticky='nswe')
 
 		self.protocol('WM_DELETE_WINDOW', lambda: self.close_handler())
 
