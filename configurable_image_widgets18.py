@@ -108,7 +108,7 @@ class CIManager:
 		else:
 			return key
 
-	def create_layout(self, style: str, data: Optional[dict] = None, stylename: Optional[str] = None):
+	def create_layout(self, style: str, data: Optional[list] = None, stylename: Optional[str] = None):
 		"""
 		Creates a layout object
 
@@ -147,8 +147,9 @@ class CIManager:
 			- use '!' for NOT (e.g., !active)
 			- use '{' and '}' for multiple states (e.g., {active !disabled})
 
-		:param style: (str) The name of the ttk style to modify (E.g., "Custom.TButton").
-		:param element_name: (str) The name of the layout element to modify (E.g., "Radiobutton.indicator"). A list of layout elements can be retrieved by calling the <elements> method on a Layout object. These can also be found in the standard ttk layout for each element.
+		:param style: (str) The name of the ttk style to modify (E.g., "Custom.TButton”).
+		:param element_name: (str) The name of the layout element to modify (E.g.,
+		“Radiobutton.indicator”). A list of layout elements can be retrieved by calling the <elements> method on a Layout object. These can also be found in the standard ttk layout for each element.
 		:param mapping: (dict) The dictionary containing mapping information. In the form of {<state>: <image name or tkinter PhotoImage object>}
 
 
@@ -290,7 +291,7 @@ class Layout:
 	The position and structure of the layout elements are stored in dictionaries
 	"""
 
-	def __init__(self, style: ttk.Style, name: str, data: dict = None, stylename: str = None):
+	def __init__(self, style: ttk.Style, name: str, data: list = None, stylename: str = None):
 		"""
 		:param style: (Style object) A ttk style object
 		:param name: (str) The name of the ttk style that the layout applies to. This is also used as the index for the layout.

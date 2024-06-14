@@ -2,14 +2,12 @@
 =========================================
 Program Name  : Timetable.py
 Author        : Connor Bateman
-Version       : v2.21.4
+Version       : v2.24.5
 Revision Date : 05-06-2024 13:20
 Dependencies  : null
 =========================================
 """
-import webbrowser
-
-VERSION = '2.21.4'
+VERSION = '2.24.5'
 import re
 import sys
 from traceback import format_exc
@@ -31,6 +29,16 @@ import tksvg
 import json
 from toolsV1 import *
 from tkinter import font as tkfont
+
+from reportlab.lib.colors import HexColor, Color  # noqa
+from reportlab.lib import units
+from reportlab.platypus import Table
+from reportlab.platypus.flowables import Flowable
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.pdfbase.ttfonts import TTFont
+import webbrowser
+from os import PathLike
 
 
 class AutoScrollbar(ttk.Scrollbar):
@@ -132,17 +140,15 @@ class MouseoverButton(tk.Label):
 		self.bind('<Button-1>', lambda v: self.pressed(), add='+')
 		self.bind('<ButtonRelease-1>', lambda v: self.released(), add='+')
 
-	def pressed(self):
+	def pressed(self) -> None:
 		self.configure(state='active', background=self.cget('activebackground'), foreground=self.cget('activeforeground'))
 
-	def released(self):
+	def released(self) -> None:
 		if self.cget('state') != 'normal':
 			self.configure(state='normal', background=self.mouseover_bg, foreground=self.mouseover_fg)
 			self.command()
 		else:
 			self.configure(background=self.default_bg, foreground=self.default_fg)
-
-
 
 	def enter(self) -> None:
 		"""
@@ -237,7 +243,7 @@ class WindowTopbar(tk.Frame):
 
 
 class FormattingOption(tk.Frame):
-	def __init__(self, root, *args, **kwargs):
+	def __init__(self, root, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.root: ExportAsPDFMenu = root
@@ -246,52 +252,51 @@ class FormattingOption(tk.Frame):
 		# self.rowconfigure(0, weight=1)
 		# self.columnconfigure(12, weight=1)
 
-		self.class_dropdown = CustomComboBox(self, style='TCombobox', textvariable=self.style_option, values=['GRID', 'ALIGN', 'VALIGN', 'FONT', 'TOPPADDING', 'FONTSIZE', 'TEXTCOLOR', 'BACKGROUND', 'SPAN', 'BOTTOMPADDING'])
-		self.class_dropdown.pack(side='left', fill='y', padx=1, pady=1)#.grid(row=0, column=0, sticky='NSWE', padx=(1, 1), pady=1)
+		class_dropdown = CustomComboBox(self, style='TCombobox', textvariable=self.style_option, values=['GRID', 'ALIGN', 'VALIGN', 'FONT', 'TOPPADDING', 'FONTSIZE', 'TEXTCOLOR', 'BACKGROUND', 'SPAN', 'BOTTOMPADDING'])
+		class_dropdown.pack(side='left', fill='y', padx=1, pady=1)
 
-		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')#.grid(row=0, column=1, sticky='NSWE', pady=0)
+		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')
 
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=2, sticky='NSWE', padx=(1, 0), pady=1)
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)
 
 		self.x1_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
 		self.x1_entry.configure(invalidcommand=lambda: self.invalid_input(self.x1_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.x1_entry, 'x'))
-		self.x1_entry.pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=3, sticky='NSWE', padx=(1, 0), pady=1)
+		self.x1_entry.pack(side='left', fill='y', padx=(1, 0), pady=1)
 
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Y₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=4, sticky='NSWE', padx=(1, 0), pady=1)
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Y₁', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)
 
 		self.y1_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
 		self.y1_entry.configure(invalidcommand=lambda: self.invalid_input(self.y1_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.y1_entry, 'y'))
-		self.y1_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)#.grid(row=0, column=5, sticky='NSWE', padx=(1, 0), pady=1)
+		self.y1_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)
 
-		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')#.grid(row=0, column=6, sticky='NSWE', pady=0)
+		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')
 
-
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=7, sticky='NSWE', padx=(1, 0), pady=1)
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='X₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)
 
 		self.x2_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
 		self.x2_entry.configure(invalidcommand=lambda: self.invalid_input(self.x2_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.x2_entry, 'x'))
-		self.x2_entry.pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=7, sticky='NSWE', padx=(1, 0), pady=1)
+		self.x2_entry.pack(side='left', fill='y', padx=(1, 0), pady=1)
 
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Y₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=8, sticky='NSWE', padx=(1, 0), pady=1)
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Y₂', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)
 
 		self.y2_entry = ttk.Entry(self, style='stipple.TEntry', width=2, validate='focusout')
 		self.y2_entry.configure(invalidcommand=lambda: self.invalid_input(self.y2_entry, 'Must be an integer within the bounds of the table.'), validatecommand=lambda v: self.validate_pos(self.y2_entry, 'y'))
-		self.y2_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)#.grid(row=0, column=9, sticky='NSWE', padx=(1, 1), pady=1)
+		self.y2_entry.pack(side='left', fill='y', padx=(1, 1), pady=1)
 
-		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')#.grid(row=0, column=10, sticky='NSWE', pady=0)
+		tk.Frame(self, background='#000', width=12).pack(side='left', fill='y')
 
-		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Value ', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)#.grid(row=0, column=11, sticky='NSWE', padx=(1, 0), pady=1)
+		tk.Label(self, background='#303841', foreground='#D8DEE9', text='Value ', font=('Calibri', 12)).pack(side='left', fill='y', padx=(1, 0), pady=1)
 
 		self.value_entry = ttk.Entry(self, style='stipple.TEntry', validate='focusout')
 		self.value_entry.configure(invalidcommand=lambda: self.invalid_input(self.value_entry, 'Invalid Value'), validatecommand=lambda: self.validate_value())
-		self.value_entry.pack(side='left', expand=True, fill='both', padx=(1, 1), pady=1)#.grid(row=0, column=12, sticky='NSWE', padx=(0, 1), pady=1)
+		self.value_entry.pack(side='left', expand=True, fill='both', padx=(1, 1), pady=1)
 
 		self.bind_class(f'click:{id(self)}', '<Button-1>', lambda v: self.clicked())
 		self.bindtags((f'click:{id(self)}', *self.bindtags()))
 		for i in self.winfo_children():
 			i.bindtags((f'click:{id(self)}', *i.bindtags()))
 
-	def clicked(self):
+	def clicked(self) -> None:
 		if self.root.selected_format_option == self:
 			self.deselect()
 			self.root.selected_format_option = None
@@ -301,16 +306,17 @@ class FormattingOption(tk.Frame):
 			self.root.selected_format_option = self
 			self.select()
 
-	def select(self):
+	def select(self) -> None:
 		self.configure(background='#F9AE58')
 
-	def deselect(self):
+	def deselect(self) -> None:
 		self.configure(background='#3B434C')
 
-	def select_style_class(self):
+	def select_style_class(self) -> None:
+		## Todo: This should add a formatting template to the value entry when a new style option is selected
 		pass
 
-	def validate_pos(self, elem, mode):
+	def validate_pos(self, elem: ttk.Entry, mode: Literal['x', 'y']) -> bool:
 		val = elem.get()
 		if not val.removeprefix('-').isnumeric():
 			return False
@@ -320,16 +326,14 @@ class FormattingOption(tk.Frame):
 		else:
 			return -(len(self.root.timetable_data['sessions'])) <= int(val) <= (len(self.root.timetable_data['sessions']) - 1)
 
-	def invalid_input(self, elem, text):
+	@staticmethod
+	def invalid_input(elem: tk.Entry, text: str) -> None:
 		cursor_pos = elem.index(tk.INSERT)
 		mb.showinfo('Invalid Input', text)
 		elem.focus()
 		elem.icursor(cursor_pos)
 
-	def validate_class(self):
-		pass
-
-	def validate_value(self):
+	def validate_value(self) -> bool:
 		val = self.value_entry.get()
 		# print(eval(f'[{val}]'))
 
@@ -340,55 +344,110 @@ class FormattingOption(tk.Frame):
 			return False
 
 
-from reportlab.lib.colors import HexColor
-from reportlab.lib.colors import Color
-from reportlab.lib import units
-from reportlab.platypus import Table
-from reportlab.platypus.flowables import Flowable
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfgen.canvas import Canvas
-from reportlab.pdfbase.ttfonts import TTFont
-
 ## todo: add font, colours, margin, to export PDF
 
-class verticalText(Flowable):
-	'''
+class VerticalText(Flowable):
+	"""
 	Rotates a text in a table cell.
 	From: https://stackoverflow.com/a/40349017
-	'''
+	"""
 
-	def __init__(self, text, bottompadding=0):
+	def __init__(self, text: str, bottompadding: float = 0) -> None:
 		Flowable.__init__(self)
 		self.text = text
 		self.bottompadding = bottompadding
 
-	def draw(self):
+	def draw(self) -> None:
 		canvas = self.canv
 		canvas.rotate(90)
 		fs = canvas._fontsize
-		canvas.translate(1, -fs/1.2)  # canvas._leading?
+		canvas.translate(1, -fs / 1.2)  # canvas._leading?
 		canvas.drawString(0, self.bottompadding, self.text)
 
-	def wrap(self, aW, aH):
+	def wrap(self, aW: float, aH: float) -> tuple[float, float]:
 		canv = self.canv
 		fn, fs = canv._fontname, canv._fontsize
 		return canv._leading, 1 + canv.stringWidth(self.text, fn, fs)
 
 
-
-
-
 class ExportAsPDFMenu(tk.Toplevel):
-	def __init__(self, root, *args, **kwargs):
+	def __init__(self, root, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 		self.root: Window = root
 		self.configure(background='#222', padx=1, pady=1)
 		self.columnconfigure(2, weight=1)
 		self.rowconfigure(10, weight=1)
-		# self.root.attributes('-disabled', 1)
 		self.grab_set()
-		# self.root.wait_window(self)
-		# self.root.attributes('-disabled', 0)
+
+		self.preset_options = {
+			'2x1 Timetable': (22, 12, 'Auto', 'Auto', 1.0, 1.0, 'cm', 'cm', 'cm'),
+			'A4 (Portrait)': (29.7, 40, 'Auto', 'Auto', 1.5, 1.5, 'cm', 'cm', 'cm'),
+			'A5 (Portrait)': (21, 29.7, 'Auto', 'Auto', 1.5, 1.5, 'cm', 'cm', 'cm'),
+			'A4 (Landscape)': (29.7, 40, 'Auto', 'Auto', 1.0, 1.0, 'cm', 'cm', 'cm'),
+			'A5 (Landscape)': (21, 29.7, 'Auto', 'Auto', 1.0, 1.0, 'cm', 'cm', 'cm'),
+		}
+
+		self.formatting = {
+			'first_row': {
+				'BACKGROUND': '#D3D3D3',
+				'FOREGROUND': '#000000',
+				'GRID': (1, '#000000'),
+				'FONT': ('Calibri-Bold',),
+				'FONTSIZE': 'Auto',
+				'ORIENT': 'horizontal',
+				'ALIGN': ('CENTER',),
+				'VALIGN': ('MIDDLE',),
+				'BOTTOMPADDING': (0,),
+			},
+
+			'first_column': {
+				'BACKGROUND': '#D3D3D3',
+				'FOREGROUND': '#000000',
+				'GRID': (1, '#000000'),
+				'FONT': ('Calibri-Bold',),
+				'FONTSIZE': 'Auto',
+				'ORIENT': 'vertical',
+				'ALIGN': ('CENTER',),
+				'VALIGN': ('MIDDLE',),
+				'BOTTOMPADDING': (0,),
+			},
+
+			'break': {
+				'BACKGROUND': '#D3D3D3',
+				'FOREGROUND': '#000000',
+				'GRID': (0.5, '#000000'),
+				'FONT': ('Calibri-Bold',),
+				'FONTSIZE': 'Auto',
+				'ORIENT': 'horizontal',
+				'ALIGN': ('CENTER',),
+				'VALIGN': ('MIDDLE',),
+				'BOTTOMPADDING': (0,),
+			},
+
+			'sessionname': {
+				'BACKGROUND': '#FFFFFF',
+				'FOREGROUND': '#000000',
+				'GRID': (0.5, '#000000'),
+				'FONT': ('Calibri-Bold',),
+				'FONTSIZE': 'Auto',
+				'ORIENT': 'horizontal',
+				'ALIGN': ('CENTER',),
+				'VALIGN': ('MIDDLE',),
+				'BOTTOMPADDING': (0,),
+			},
+
+			'body': {
+				'BACKGROUND': '#FFFFFF',
+				'FOREGROUND': '#000000',
+				'GRID': (0.5, '#000000'),
+				'FONT': ('Calibri',),
+				'FONTSIZE': 'Auto',
+				'ORIENT': 'horizontal',
+				'ALIGN': ('CENTER',),
+				'VALIGN': ('MIDDLE',),
+				'BOTTOMPADDING': (0,),
+			}
+		}
 
 		frame = tk.Frame(self, background='#3B434C', highlightthickness=1, highlightbackground='#3B434C')
 		frame.grid(row=0, column=0, columns=3, sticky='NSWE', padx=0, pady=(0, 0))
@@ -411,8 +470,9 @@ class ExportAsPDFMenu(tk.Toplevel):
 		tk.Label(format_options_frame, text='Page Size', **labelconfig).pack(side='top', padx=(0, 0), pady=(0, 1), fill='x')
 		tk.Frame(format_options_frame, background='#222', height=1).pack(side='top', fill='both', pady=(0, 1))
 
-		self.presets_selector = CustomComboBox(format_options_frame, state='readonly', style='TCombobox', values=['A4 (Portrait)', 'A5 (Portrait)', 'A4 (Landscape)', 'A5 (Landscape)'], width=5)
+		self.presets_selector = CustomComboBox(format_options_frame, state='readonly', style='TCombobox', values=['2x1 Timetable', 'A4 (Portrait)', 'A5 (Portrait)', 'A4 (Landscape)', 'A5 (Landscape)'], width=5)
 		self.presets_selector.pack(side='top', padx=(0, 0), pady=(0, 1), fill='x')
+		self.presets_selector.bind('<<ComboboxSelected>>', lambda v: self.select_preset())
 		self.presets_selector.set('A4 (Portrait)')
 
 		self.width_entry = ttk.Entry(format_options_frame, style='stipple.TEntry', width=5)
@@ -514,16 +574,16 @@ class ExportAsPDFMenu(tk.Toplevel):
 		tk.Label(frame, text='◴', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.nw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.nw_corner_radius.configure(validatecommand=lambda: self.validate_num(self.nw_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.nw_corner_radius, 'TODO'))
+		self.nw_corner_radius.configure(validatecommand=lambda: self.validate_corner(self.nw_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.nw_corner_radius, 'TODO'))
 		self.nw_corner_radius.pack(side='left', padx=(0, 1), expand=True, fill='both')
-		self.nw_corner_radius.insert(0, '5.0')
+		self.nw_corner_radius.insert(0, '2.5')
 
 		tk.Label(frame, text='◷', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.ne_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.ne_corner_radius.configure(validatecommand=lambda: self.validate_num(self.ne_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.ne_corner_radius, 'TODO'))
+		self.ne_corner_radius.configure(validatecommand=lambda: self.validate_corner(self.ne_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.ne_corner_radius, 'TODO'))
 		self.ne_corner_radius.pack(side='left', padx=(0, 0), expand=True, fill='both')
-		self.ne_corner_radius.insert(0, '5.0')
+		self.ne_corner_radius.insert(0, '2.5')
 
 		frame = tk.Frame(format_options_frame, background='#3B434C')
 		frame.pack(side='top', expand=True, fill='both')
@@ -531,16 +591,16 @@ class ExportAsPDFMenu(tk.Toplevel):
 		tk.Label(frame, text='◵', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.sw_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.sw_corner_radius.configure(validatecommand=lambda: self.validate_num(self.sw_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.sw_corner_radius, 'TODO'))
+		self.sw_corner_radius.configure(validatecommand=lambda: self.validate_corner(self.sw_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.sw_corner_radius, 'TODO'))
 		self.sw_corner_radius.pack(side='left', padx=(0, 1), expand=True, fill='both')
-		self.sw_corner_radius.insert(0, '5.0')
+		self.sw_corner_radius.insert(0, '2.5')
 
 		tk.Label(frame, text='◶', **labelconfig, width=10).pack(side='left', padx=(0, 1), pady=0, fill='y')
 
 		self.se_corner_radius = ttk.Entry(frame, style='stipple.TEntry', width=5)
-		self.se_corner_radius.configure(validatecommand=lambda: self.validate_num(self.se_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.se_corner_radius, 'TODO'))
+		self.se_corner_radius.configure(validatecommand=lambda: self.validate_corner(self.se_corner_radius), validate='focusout', invalidcommand=lambda: self.invalid_input(self.se_corner_radius, 'TODO'))
 		self.se_corner_radius.pack(side='left', padx=(0, 0), expand=True, fill='both')
-		self.se_corner_radius.insert(0, '5.0')
+		self.se_corner_radius.insert(0, '2.5')
 
 		self.match_corner_radius = tk.BooleanVar(self, True)
 		ttk.Checkbutton(format_options_frame, style='Custom.TCheckbutton', text='Match Radius', variable=self.match_corner_radius).pack(side='top', fill='both', pady=(0, 1))
@@ -550,7 +610,7 @@ class ExportAsPDFMenu(tk.Toplevel):
 		frame.rowconfigure(1, weight=1)
 		frame.columnconfigure(1, weight=1, minsize=500)
 
-		tk.Label(frame, text='Formatting', **labelconfig, highlightthickness=1, highlightbackground='#3B434C').grid(row=0, column=0, columns=3, sticky='NSWE', pady=(0, 1))
+		tk.Label(frame, text='Advanced Formatting', **labelconfig, highlightthickness=1, highlightbackground='#3B434C').grid(row=0, column=0, columns=3, sticky='NSWE', pady=(0, 1))
 
 		self.vscrollbar = ttk.Scrollbar(frame, orient='vertical', style='Custom.Vertical.TScrollbar')
 		self.vscrollbar.grid(row=1, column=2, sticky='ns', padx=(0, 0), pady=0)
@@ -567,12 +627,11 @@ class ExportAsPDFMenu(tk.Toplevel):
 
 		self.scrollable_frame = self.canvas.create_window(0, 0, window=self.formatting_frame, anchor='nw')
 
-		## todo: rm ah
 		MouseoverButton(frame, text='+', command=lambda: self.add_formatting(), image=self.root.pixel, width=18, height=18, highlightthickness=1, **buttonconfig).grid(row=2, column=0, sticky='nw', padx=(0, 1), pady=(1, 0))
 		MouseoverButton(frame, text='-', command=lambda: self.remove_formatting(), image=self.root.pixel, width=18, height=18, highlightthickness=1, **buttonconfig).grid(row=2, column=1, sticky='nw', padx=(0, 0), pady=(1, 0))
 
 		frame = tk.Frame(self, background='#222')
-		frame.grid(row=6, column=1, sticky='NSE', pady=(0, 1))
+		frame.grid(row=6, column=1, sticky='NSE', pady=(0, 0))
 
 		MouseoverButton(frame, text='Cancel', command=lambda: self.destroy(), image=self.root.pixel, width=50, height=18, highlightthickness=1, **buttonconfig).pack(side='left', padx=0, fill='y')  # .grid(row=1, column=1, sticky='nswe', padx=(0, 1), pady=(0, 0))
 		MouseoverButton(frame, text='Export', command=lambda: self.convert(), image=self.root.pixel, width=50, height=18, highlightthickness=1, **buttonconfig).pack(side='left', padx=(1, 0), fill='y')  # .grid(row=1, column=0, sticky='nswe', padx=(0, 1), pady=(0, 0))
@@ -580,7 +639,7 @@ class ExportAsPDFMenu(tk.Toplevel):
 		self.selected_format_option: Optional[FormattingOption] = None
 		self.formatting_elems = []
 		self.timetable_data = None
-		self.tablestyle = None
+		self.tablestyle: Optional[list] = None
 		self.read(self.root.filename)
 
 		for i in self.tablestyle:
@@ -597,49 +656,81 @@ class ExportAsPDFMenu(tk.Toplevel):
 			self.formatting_elems.append(elem)
 
 		## From: https://stackoverflow.com/a/16198198
-		def _configure_interior(event):
+		def _configure_interior(event) -> None:
 			# Update the scrollbars to match the size of the inner frame.
-			size = (self.formatting_frame.winfo_reqwidth(), self.formatting_frame.winfo_reqheight())
-			self.canvas.config(scrollregion="0 0 %s %s" % size)
+			self.canvas.config(scrollregion=(0, 0, self.formatting_frame.winfo_reqwidth(), self.formatting_frame.winfo_reqheight()))
 			if self.formatting_frame.winfo_reqwidth() != self.canvas.winfo_width():
 				# Update the canvas's width to fit the inner frame.
 				self.canvas.config(width=self.formatting_frame.winfo_reqwidth())
 
 		self.formatting_frame.bind('<Configure>', _configure_interior)
 
-		def _configure_canvas(event):
+		def _configure_canvas(event) -> None:
 			if self.formatting_frame.winfo_reqwidth() != self.canvas.winfo_width():
 				# Update the inner frame's width to fill the canvas.
 				self.canvas.itemconfigure(self.scrollable_frame, width=self.canvas.winfo_width())
 
 		self.canvas.bind('<Configure>', _configure_canvas)
 
-	def read(self, input_filename):
-		with open(input_filename, 'r', encoding='utf-8') as input_file:
+	def select_preset(self) -> None:
+		preset_name = self.presets_selector.get()
+		preset_data = self.preset_options[preset_name]
+
+		elems = [
+			self.width_entry,
+			self.height_entry,
+			self.table_width_entry,
+			self.table_height_entry,
+			self.h_margin_entry,
+			self.v_margin_entry,
+		]
+		unit_elems = [
+			self.page_units,
+			self.table_units,
+			self.margin_units
+		]
+
+		for elem, i in zip(elems, preset_data[:-len(unit_elems)]):
+			elem.delete(0, tk.END)
+			elem.insert(0, i)
+
+		for elem, i in zip(unit_elems, preset_data[-len(unit_elems):]):
+			elem.set(i)
+
+	def read(self, input_filename: PathLike) -> None:
+		with open(input_filename, encoding='utf-8') as input_file:
 			timetable = json.load(input_file)
 
 		self.timetable_data = timetable
 
 		self.tablestyle = [
-			('GRID', (0, 0), (-1, -1), 0.5, HexColor(0x000000)),
-			('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-			('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-			('FONT', (0, 0), (0, -1), 'Calibri-Bold', 7, 7),
-			('FONT', (0, 0), (-1, 0), 'Calibri-Bold', 7, 7),
-			('FONT', (1, 1), (-1, -1), 'Calibri', 7, 7),
-			('BACKGROUND', (0, 0), (-1, 0), HexColor(0xD3D3D3)),
-			('BACKGROUND', (0, 0), (0, -1), HexColor(0xD3D3D3)),
+			# ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#000000')),
+			# ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+			# ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+			# ('FONT', (0, 0), (0, -1), 'Calibri-Bold', 7, 7),
+			# ('FONT', (0, 0), (-1, 0), 'Calibri-Bold', 7, 7),
+			# ('FONT', (1, 1), (-1, -1), 'Calibri', 7, 7),
+			# ('BACKGROUND', (0, 0), (-1, 0), HexColor('#D3D3D3')),
+			# ('BACKGROUND', (0, 0), (0, -1), HexColor('#D3D3D3')),
 			('SPAN', (-2, 2), (-2, -1)),
 			('SPAN', (-1, 2), (-1, -1)),
 		]
 
-	def invalid_input(self, element: ttk.Entry, text: str) -> None:
+	def browse_filename(self) -> None:
+		filename = fd.askopenfilename(defaultextension='.json', filetypes=(('JSON', '.json'), ('Plain Text', '.txt'), ('All', '*')), initialdir=os.path.dirname(self.root.filename), initialfile=self.root.filename, parent=self)
+		if filename:
+			self.filename_entry.delete(0, tk.END)
+			self.filename_entry.insert(0, filename)
+
+	@staticmethod
+	def invalid_input(element: ttk.Entry, text: str) -> None:
 		cursor_pos = element.index(tk.INSERT)
 		mb.showinfo('Invalid Input', text)
 		element.focus()
 		element.icursor(cursor_pos)
 
-	def validate_num(self, elem: ttk.Entry, dtype=float, allow_negative=False, special_vals=None):
+	@staticmethod
+	def validate_num(elem: ttk.Entry, dtype=float, allow_negative=False, special_vals=None):
 		value = elem.get()
 		if special_vals is not None:
 			if value.title().strip(' \t\n') in special_vals:
@@ -667,19 +758,49 @@ class ExportAsPDFMenu(tk.Toplevel):
 			except:
 				return False
 
-
-	def convert(self):
+	def convert(self) -> None:
 		# if append:
 		# 	canvas = Canvas(dir_name + '/img2pdf_tmp.pdf', (doc_w, doc_h))
 		# else:
+		## todo: check permission before writing to PDF
 		output_filename = self.filename_entry.get()
 		if not output_filename.endswith('.pdf'):
 			output_filename += '.pdf'
 
 		self.tablestyle = []
 		for i in self.formatting_elems:
-			line = [i.style_option.get().upper(), (int(i.x1_entry.get()), int(i.y1_entry.get())), (int(i.x2_entry.get()), int(i.y2_entry.get())), *eval(f'[{i.value_entry.get()}]')]
+			line = (i.style_option.get().upper(), (int(i.x1_entry.get()), int(i.y1_entry.get())), (int(i.x2_entry.get()), int(i.y2_entry.get())), *eval(f'[{i.value_entry.get()}]'))
 			self.tablestyle.append(line)
+
+		data = [
+			['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+		]
+
+		sessionname_idxs = [((-2, 1), (-1, -1))]
+		break_idxs = []
+		break_count = 0
+		v_header_indexes = []
+		for n, i in enumerate(self.timetable_data['sessions']):
+			if i[1]:
+				sessionname_idxs.append([(1, len(data)), (-3, len(data))])
+				v_header_indexes.append([(0, len(data)), (0, len(data) + 2)])
+				line_data = [[i[0]], [''], ['']]
+				for day_num, day in enumerate(self.timetable_data['timetable']):
+					class_index = day[n - break_count]
+					line_data[0].append(self.timetable_data['classes'][class_index])
+					line_data[1].append(self.timetable_data['teachers'][class_index])
+					line_data[2].append(self.timetable_data['rooms'][class_index])
+
+				self.tablestyle.append(('SPAN', (0, len(data)), (0, len(data) + 2)))
+				data.extend(line_data)
+			else:
+				break_count += 1
+				break_idxs.append([(0, len(data)), (-3, len(data))])
+				line_data = [i[0]]
+				self.tablestyle.append(('SPAN', (0, len(data)), (-3, len(data))))
+				data.append(line_data)
+
+		data[1].extend(['Homework'] * 2)
 
 		page_unit = {'cm': units.cm, 'mm': units.mm, 'pt': units.pica, 'px': 1, 'in': units.inch}[self.page_units.get()]
 
@@ -715,104 +836,75 @@ class ExportAsPDFMenu(tk.Toplevel):
 		## todo: add column and row size distribution to export config
 		## Get relative column widths and row heights
 		cw = [0.055] + [0.135] * 7
-		rows = (3 * sum(session_types) + session_types.count(False))
-		rh = [0.055] + [0.945/rows] * rows
-		print('rh, cw', sum(rh), sum(cw))
-
 		cw = [v * tablewidth for v in cw]
+
+		rows = (3 * sum(session_types) + session_types.count(False))
+		header_column_width = cw[0] / tableheight
+		rh = [header_column_width] + [(1 - header_column_width) / rows] * rows
 		rh = [v * tableheight for v in rh]
-		print('cw', cw, 'rh', rh)
 
-		canvas = Canvas(output_filename, (doc_w, doc_h))
-
-		data = [
-			['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-		]
-
-		bottompadding = [
-			float(self.bottom_padding_0.get()),
-			float(self.bottom_padding_1.get()),
-			float(self.bottom_padding_2.get()),
-		]#eval(f'[{self.bottom_padding.get()}]')
-
-		# if not self.expand_x.get():
-		# 	bottompadding = [0, *bottompadding[1:]]
-		# if not self.expand_y.get():
-		# 	bottompadding = [bottompadding[0], 0, 0]
-
-		break_count = 0
-
-		for n, i in enumerate(self.timetable_data['sessions']):
-			if i[1]:
-				line_data = [[verticalText(i[0], bottompadding[0])], [''], ['']]
-				self.tablestyle.extend([('SPAN', (0, len(data)), (0, len(data) + 2)), ('FONT', (1, len(data)), (-1, len(data)), 'Calibri-Bold', 7, 7)])
-				for day_num, day in enumerate(self.timetable_data['timetable']):
-					# print(day, n)
-					class_index = day[n - break_count]
-					line_data[0].append(self.timetable_data['classes'][class_index])
-					line_data[1].append(self.timetable_data['teachers'][class_index])
-					line_data[2].append(self.timetable_data['rooms'][class_index])
-				line_data[0].extend(['', ''])
-				line_data[1].extend(['', ''])
-				line_data[2].extend(['', ''])
-
-				data.extend(line_data)
-			else:
-				break_count += 1
-				line_data = [i[0]] + [''] * 5
-				self.tablestyle.extend([('SPAN', (0, len(data)), (-3, len(data))), ('FONT', (1, len(data)), (-1, len(data)), 'Calibri-Bold'), ('BACKGROUND', (1, len(data)), (-3, len(data)), HexColor(0xD3D3D3))])
-				if bottompadding[2]:
-					self.tablestyle.append(('BOTTOMPADDING', (0, len(data)), (-3, len(data)), bottompadding[2]))
-				data.append(line_data)
-		data[1][-1] = 'Homework'
-		data[1][-2] = 'Homework'
+		font_sizes = dict()
 
 		pdfmetrics.registerFont(TTFont(f'Calibri-Bold', 'calibrib.ttf'))
 		pdfmetrics.registerFont(TTFont(f'Calibri', 'calibri.ttf'))
-		# for i in data:
-		# 	print(i)
 
-		# if expand[0]:
-		# 	total_w = doc_w - offset[0] * 2
-		# 	size_scale = total_w/sum(cw)#*len(cw)
-		# 	cw = [(i * size_scale) for i in cw]
-		# 	print(size_scale, 'sc')
-		# if expand[1]:
-		# 	total_h = doc_h - offset[1] * 2
-		# 	size_scale = total_h/sum(rh)#*len(rh)
-		# 	rh = [(i * size_scale) for i in rh]
-		# 	print(size_scale, 'sc')
+		for key, row in [('first_row', 0), ('first_column', 1), ('body', 1), ('sessionname', 1), ('break', 1)]:
+			height = rh[row]
+			font = self.formatting[key]['FONT'][0]
+			if f'{height}.{font}' not in font_sizes:
+				font_size = 1
+				face = pdfmetrics.getFont(font).face
+				while (face.ascent - face.descent) / 1000 * (font_size + 0.5) < height / 2:
+					font_size += 0.5
+				font_sizes.update({f'{height}.{font}': font_size})
 
-		# if self.expand_x.get():
-		header_size = 1
-		face = pdfmetrics.getFont('Calibri-Bold').face
-		h_height = (face.ascent - face.descent) / 1000 * (header_size + 0.5)
-		while h_height < rh[0]/2:
-			header_size += 0.5
-			h_height = (face.ascent - face.descent) / 1000 * (header_size + 0.5)
+		for key, ranges in [('body', [((1, 1), (-3, -1))]), ('first_row', [((0, 0), (-1, 0))]), ('first_column', v_header_indexes), ('sessionname', sessionname_idxs), ('break', break_idxs)]:
+			for pos in ranges:
+				for k, v in self.formatting[key].items():
+					match k:
+						case 'FONTSIZE':
+							if v == 'Auto':
+								if key == 'first_row':
+									font_size = font_sizes[str(rh[0]) + '.' + self.formatting[key]['FONT'][0]]
+								else:
+									font_size = font_sizes[str(rh[1]) + '.' + self.formatting[key]['FONT'][0]]
+							else:
+								font_size = float(v)
+							self.tablestyle.append((k, *pos, font_size))
+						case 'ORIENT':
+							if v.lower() == 'vertical':
+								d = []
+								for y in data[pos[0][1]:pos[1][1] + (1 if pos[1][1] >= 0 else -1)]:
+									line = y
+									vertical_slice = slice(pos[0][0], pos[1][0] + (1 if pos[1][0] >= 0 else -1))
+									line[vertical_slice] = [x if x.strip('\n\t ') == '' else VerticalText(x, self.formatting[key]['BOTTOMPADDING'][0]) for x in line[vertical_slice]]
+									d.append(y)
+								data[pos[0][1]:pos[1][1] + (1 if pos[1][1] >= 0 else -1)] = d
+						case 'BOTTOMPADDING':
+							if self.formatting[key]['ORIENT'].lower() != 'vertical':
+								self.tablestyle.append((k, *pos, *v))
+						case 'GRID':
+							self.tablestyle.append((k, *pos, v[0], HexColor(v[1])))
+						case 'BACKGROUND':
+							self.tablestyle.append((k, *pos, HexColor(v)))
+						case 'FOREGROUND':
+							self.tablestyle.append((k, *pos, HexColor(v)))
+						case _:
+							self.tablestyle.append((k, *pos, *v))
 
-		# print(face.descent, 'hh', rh[0] - (face.ascent - face.descent) / 1000 * header_size)
+		canvas = Canvas(output_filename, (doc_w, doc_h))
 
-		body_size = 1
-		face = pdfmetrics.getFont('Calibri').face
-		b_height = (face.ascent - face.descent) / 1000 * (body_size + 0.5)
-		while b_height < rh[1]/2:
-			body_size += 0.5
-			b_height = (face.ascent - face.descent) / 1000 * (body_size + 0.5)
-		print(0.625 * units.cm, (face.ascent - face.descent) / 1000 * 6)
-			# print(face.descent, 'fd', b_height)
+		corner_unit = {'cm': units.cm, 'mm': units.mm, 'pt': units.pica, 'px': 1, 'in': units.inch, '%': min(tablewidth, tableheight) / 200}[self.corner_units.get()]
+		corners = [float(i.get()) * corner_unit for i in [self.nw_corner_radius, self.ne_corner_radius, self.sw_corner_radius, self.se_corner_radius]]
 
-		self.tablestyle.extend([
-			('FONTSIZE', (0, 0), (0, -1), header_size),
-			('FONTSIZE', (0, 0), (-1, 0), header_size),
-			('FONTSIZE', (1, 1), (-1, -1), body_size),
-		])
+		print(data)
 
 		table = Table(
 			data, style=self.tablestyle,
 			colWidths=cw, rowHeights=rh,
-			cornerRadii=(float(self.nw_corner_radius.get()) if self.nw_corner_radius.get() else 0, float(self.ne_corner_radius.get()) if self.ne_corner_radius.get() else 0, float(self.sw_corner_radius.get()) if self.sw_corner_radius.get() else 0, float(self.se_corner_radius.get()) if self.se_corner_radius.get() else 0)
+			cornerRadii=corners
 		)
+
 		table.wrapOn(canvas, doc_w, doc_h)
 		table.drawOn(canvas, margin[0], doc_h - margin[1] - tableheight)
 		canvas.save()
@@ -823,56 +915,35 @@ class ExportAsPDFMenu(tk.Toplevel):
 
 		self.destroy()
 
-	def add_formatting(self):
+		## todo: add ommit weekends, omit rooms, omit teachers to export PDF config.
+		## todo: Add events to PDF conversion
+
+	def validate_corner(self, elem: ttk.Entry):
+		result = self.validate_num(elem)
+		val = elem.get()
+		if result and self.match_corner_radius.get():
+			for i in [self.nw_corner_radius, self.ne_corner_radius, self.sw_corner_radius, self.se_corner_radius]:
+				i.delete(0, tk.END)
+				i.insert(0, val)
+		return result
+
+	def add_formatting(self) -> None:
 		elem = FormattingOption(self, self.formatting_frame, background='#3B434C')
 		elem.pack(side='top', fill='x', padx=1, pady=(1, 0))
 		self.formatting_elems.append(elem)
 		self.canvas.yview_moveto(10)
 
-	def remove_formatting(self):
+	def remove_formatting(self) -> None:
 		if self.selected_format_option is not None:
 			idx = self.formatting_elems.index(self.selected_format_option)
 			self.formatting_elems.pop(idx).destroy()
 			if len(self.formatting_elems):
 				self.selected_format_option = self.formatting_elems[max(0, idx - 1)]
 				self.selected_format_option.select()
-# self.page_preview
-
-		# self.format_preview_frame = tk.Frame(self)
-		# self.format_preview_frame.grid(row=8, column=0, sticky='NSWE', padx=1, pady=1)
-		#
-		# self.h_header_preview = tk.Label(self.format_preview_frame, background='#ccc', foreground='#000', text='Monday')
-		# self.h_header_preview.grid(row=0, column=0, sticky='nswe', padx=1, pady=1)
-		#
-		# self.v_header_preview
-		# self.session_break_preview
-		# self.room_preview
-		# self.teacher_preview
-		# self.day_preview
-		#
-		# self.header_font_family
-		# self.header_font_style
-		# self.header_font_size
-		# self.header_font_colour
-		# self.header_background
-		#
-		# self.session_font_family
-		# self.session_font_style
-		# self.session_font_size
-		# self.session_font_colour
-		# self.session_background
-		#
-		# self.cell_font_family
-		# self.cell_font_style
-		# self.cell_font_size
-		# self.cell_font_colour
-		# self.cell_background
-		#
-		# self.table_border_width
-		# self.table_border_colour
 
 
 ## todo: loading bar: ⡿⢿⣻⣽⣾⣷⣯⣟
+
 
 class IndentText(tk.Text):
 	def __init__(self, parent, *args, **kwargs) -> None:
@@ -1550,7 +1621,8 @@ class TimeTable:
 		print(datetime.datetime.fromtimestamp(self.start_timestamp), 'start')
 		return int((now - self.start_timestamp) // (86400 * 7))
 
-	def validate_session(self, now: datetime.datetime, h1: int, m1: int, h2: int, m2: int) -> int:
+	@staticmethod
+	def validate_session(now: datetime.datetime, h1: int, m1: int, h2: int, m2: int) -> int:
 		if h2 == -1 and m2 == -1:
 			return now.hour > h1 or now.hour == h1 and now.minute > m2
 		elif h1 == h2:
@@ -2126,13 +2198,12 @@ class Window(tk.Tk):
 		"""
 		match mode:
 			case 'xls':
+				## todo: implement xls and csv conversion
 				mb.showinfo('Not Implemented', 'This feature has not been implemented yet.')
-				## todo: implement
 			case 'csv':
 				mb.showinfo('Not Implemented', 'This feature has not been implemented yet.')
 			case 'pdf':
 				ExportAsPDFMenu(self)
-
 
 	def undo_all(self) -> None:
 		mb.showinfo('Not Implemented', 'This feature has not been implemented yet.')
@@ -2160,7 +2231,8 @@ class Window(tk.Tk):
 	def show_settings(self) -> None:
 		SettingsWindow(self, background='#303841')
 
-	def get_start_week(self, week: Optional[int] = None, allow_cancel: bool = False) -> int | None:
+	@staticmethod
+	def get_start_week(week: Optional[int] = None, allow_cancel: bool = False) -> int | None:
 		if week is None:
 			week = sd.askinteger('Setup', 'Enter the current week:', initialvalue=1, minvalue=1, maxvalue=11)
 			print(week)
@@ -2423,7 +2495,7 @@ class SettingsWindow(tk.Toplevel):
 		frame.columnconfigure(0, weight=1)
 
 		tk.Label(frame, text='Resolution Scaling', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), **labelconfig).grid(row=0, column=0, sticky='nswe', padx=1, pady=(1, 0), columns=2)
-		tk.Label(frame, text='DPI scaling for the application. Must be an intager.', foreground='#777', font=('Calibri', 10, 'italic'), **labelconfig).grid(row=1, column=0, sticky='nswe', padx=1, pady=(0, 0), columns=2)
+		tk.Label(frame, text='DPI scaling for the application. Must be an integer.', foreground='#777', font=('Calibri', 10, 'italic'), **labelconfig).grid(row=1, column=0, sticky='nswe', padx=1, pady=(0, 0), columns=2)
 		self.resolution_entry = ttk.Entry(frame, validatecommand=lambda v: self.validate_dpi_scale(), validate='focusout', style='stipple.TEntry', textvariable=self.resolution_scaling)
 		self.resolution_entry.configure(invalidcommand=lambda: self.invalid_input(self.resolution_entry, 'Resolution scaling must be an integer between 0 and 3.'))
 		self.resolution_entry.grid(row=2, column=0, sticky='nswe', padx=1, pady=(0, 1), columns=2)
@@ -2440,14 +2512,15 @@ class SettingsWindow(tk.Toplevel):
 		self.scale_entry.configure(invalidcommand=lambda: self.invalid_input(self.scale_entry, 'UI scale must be a number between 0.2 and 10.0'))
 		self.scale_entry.grid(row=2, column=0, sticky='nswe', padx=1, pady=(0, 1), columns=2)
 
-		frame = tk.Frame(self, background='#4F565E', height=5)
+		frame = tk.Frame(self, background='#303841', height=5)
 		frame.grid(row=4, column=0, sticky='nse', padx=5, pady=5)
 
 		MouseoverButton(frame, text='Ok', command=lambda: self.ok_pressed(), width=60, **buttonconfig).grid(row=0, column=1, sticky='nswe', padx=(1, 1), pady=(1, 1))
 		MouseoverButton(frame, text='Cancel', command=lambda: self.destroy(), width=60, **buttonconfig).grid(row=0, column=2, sticky='nswe', padx=(0, 1), pady=(1, 1))
-		MouseoverButton(frame, text='Apply', command=lambda: self.apply(), width=60, **buttonconfig).grid(row=0, column=3, sticky='nswe', padx=(0, 1), pady=(1, 1))
+		MouseoverButton(frame, text='Apply', command=lambda: self.apply(), width=60, **buttonconfig).grid(row=0, column=3, sticky='nswe', padx=(0, 0), pady=(1, 1))
 
-	def invalid_input(self, element: ttk.Entry, text: str) -> None:
+	@staticmethod
+	def invalid_input(element: ttk.Entry, text: str) -> None:
 		cursor_pos = element.index(tk.INSERT)
 		mb.showinfo('Invalid Input', text)
 		element.focus()
@@ -2618,18 +2691,16 @@ about_info = about_info.format(spacer='=' * about_width, pyheading=' Python '.ce
 
 about_info += '=' * about_width
 
-
 if file_val[3]:
-	json_object = json.dumps(DEFAULT_WINDOW_SETTINGS, indent=4, separators=(', ', ': '))
+	JsonObject = json.dumps(DEFAULT_WINDOW_SETTINGS, indent=4, separators=(', ', ': '))
 	with open('window_settings.json', 'w', encoding='utf-8') as File:
-		File.write(json_object)
+		File.write(JsonObject)
 
 window = Window(file_val)
 
 ## Display a warning if using the wrong operating system, otherwise, set DPI awareness
 if platform.system() == 'Windows':
 	ctypes.windll.shcore.SetProcessDpiAwareness(window.settings['resolution_scaling'])
-
 
 first_time_setup = False
 if file_exists('first_time_setup.txt') and getattr(sys, 'frozen', True):
@@ -2676,9 +2747,9 @@ if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the setti
 		else:
 			window.settings.update({'default.path': window.filename})
 			if not file_exists('settings.json'):
-				json_object = json.dumps(window.settings, indent=4, separators=(', ', ': '))
+				JsonObject = json.dumps(window.settings, indent=4, separators=(', ', ': '))
 				with open('settings.json', 'w', encoding='utf-8') as File:
-					File.write(json_object)
+					File.write(JsonObject)
 
 			with open(Filename, 'w', encoding='utf-8') as File:
 				File.writelines(TIMETABLE_JSON_TEMPLATE % start_time)
@@ -2692,7 +2763,7 @@ if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the setti
 ## Check that the window hasn't been destroyed by the code above
 if 'window' in globals():
 	window.update_idletasks()
-	size = (window.timetable.display_frame.winfo_width() - 47, window.timetable.display_frame.winfo_height() + window.top_bar.winfo_height() - 34)
-	window.wm_minsize(*size)
+	Size = (window.timetable.display_frame.winfo_width() - 47, window.timetable.display_frame.winfo_height() + window.top_bar.winfo_height() - 34)
+	window.wm_minsize(*Size)
 
 window.mainloop()

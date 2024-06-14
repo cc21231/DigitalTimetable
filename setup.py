@@ -54,9 +54,9 @@ include_files = [
     # ('icons/about_icon.svg', 'icons/about_icon.svg'),
 ]
 
-executables = [Executable("TimetableV2.21.py", base=base, icon='icons/win_icon', shortcut_name="Timetable", shortcut_dir="Timetable")]
+executables = [Executable("TimetableV2_21.py", base=base, icon='icons/win_icon', shortcut_name="Timetable", shortcut_dir="Timetable")]
 
-packages = ["tksvg", "re", 'idlelib', 'platform', 'traceback', 'configurable_image_widgets18', 'tkinter', 'typing', 'pywinstyles', 'numpy', 'datetime', 'os', 'ctypes', 'json', 'toolsV1']
+packages = ["tksvg", "re", 'idlelib', 'platform', 'traceback', 'configurable_image_widgets18', 'tkinter', 'typing', 'pywinstyles', 'datetime', 'os', 'ctypes', 'json', 'toolsV1', 'reportlab', 'reportlab', 'webbrowser']
 
 
 directory_table = [
@@ -106,7 +106,7 @@ options = {
 setup(
     name="Timetable",
     options=options,
-    version="2.21.1",
+    version="2.24.4",
     description='Description',
     author='Connor Bateman',
     executables=executables,

@@ -1,3 +1,5 @@
 pywinstyles~=1.8
 tksvg~=0.7.4
 more_itertools
+reportlab~=4.2.0
+PyPDF2~=3.0.1
