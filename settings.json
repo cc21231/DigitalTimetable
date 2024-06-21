@@ -5,6 +5,6 @@
         10, 
         ""
     ], 
-    "resolution_scaling": 2, 
+    "dpi_awareness": 2, 
     "ui_scaling": 1.3
 }
