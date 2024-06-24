@@ -12,5 +12,12 @@ depreciated.py
 __pycache__/animated_widgets.cpython-312.pyc
 settings.json
 window_settings.json
+TimetableV2_22.py
+TimetableV2_23.py
 /build/
 /__pycache__/
+new_timetable.json
+setup.py
+testing.py
+Timetable_to_pdf.py
+/Depreciated/
