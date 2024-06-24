@@ -22,14 +22,14 @@ XPStyle On
 ManifestDPIAware True
 ; AutoCloseWindow True
 
-!define /IfNDef VER 0.2.24.5
+!define /IfNDef VER 0.2.27.1
 
 
 CRCCheck On
 !include "MUI.nsh"
 !include "${NSISDIR}\Contrib\Modern UI\System.nsh"
 
-!define VERSION "2.24.5"
+!define VERSION "2.27.1"
 !define NAME "Timetable"
 !define COMPANY "Connor Bateman"
 !define EXE_NAME "TimetableV2_21"

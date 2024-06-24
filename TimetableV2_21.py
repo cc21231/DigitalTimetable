@@ -1679,7 +1679,7 @@ class Event:
             'day': self.day,
             'session': self.session,
             'data': enclose(multireplace(self.text, {'"': '\\"', '\n': '\\n', '\t': '\\t'}), '"'),
-            'tags': list(map(lambda v: v.replace('"', '\\"'), self.tags)) if self.tags is not None else None,
+            'tags': list(map(lambda v: v.replace('"', '\\"'), self.tags)) if self.tags is not None else 'null',
             'type': enclose(self.type(), '"')
         }
         return data
@@ -2480,6 +2480,8 @@ class TimeTable:
         if self.current_savefile_contents is None:  # If the savefile contents string is empty, set its value to the contents of the existing timetable data file
             with open(self.master.filename, encoding='utf-8') as file:
                 self.current_savefile_contents = multireplace(''.join(file.readlines()), {'\n': '', '    ': '', '\t': ''})
+        print(multireplace(json_data, {'\n': '', '    ': '', '\t': ''}))
+        print(self.current_savefile_contents)
 
         self.events_saved = multireplace(json_data, {'\n': '', '    ': '', '\t': ''}) == self.current_savefile_contents  # Check if the saved timetable matches the current timetable
         self.update_save_buttons()  # Update the state of the `save` and `save as` buttons
@@ -3594,7 +3596,7 @@ def validate_local_files() -> list[bool | str]:
     checks.append(not os.path.exists('icons'))  # Check if the `icons` directory exists
     checks.append(bool(set(ImageFiles) - set(os.listdir('icons'))))  # Check that all of the necessary files are in the icons dictionary. Todo: this may cause performance issues when there are lots of files
 
-    if all(checks[:3]):  # If the settings file if valid
+    if not any(checks[:3]):  # If the settings file if valid
         if file_exists(settings['default.path']):  # Check if the default timetable file exists
             try:  # Attempt to read the timetable file
                 with open(settings['default.path'], encoding='utf-8') as file:
@@ -3683,6 +3685,8 @@ else:  # Otherwise, show warnings related to file validation
 
 ProgramClosed = False
 
+print(file_val)
+print(file_val[:3], file_val[-3:])
 ## If the existing timetable file is missing, invalid, or otherwise can't be read, create a new timetable file.
 if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the settings file and timetable file.
     ## Prompt the user for a filename for the new timetable file

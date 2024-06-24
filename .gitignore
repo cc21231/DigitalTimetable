@@ -12,4 +12,5 @@ depreciated.py
 __pycache__/animated_widgets.cpython-312.pyc
 settings.json
 window_settings.json
-window_settings.json
+/build/
+/__pycache__/
