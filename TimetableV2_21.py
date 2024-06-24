@@ -50,6 +50,7 @@ NUMBERING_PATTERN = r'(?P<NUMBERING>[0-9]{1,2}[\.\):])'
 
 INDENT_PATTERN = rf'(\n|\A)[ \t]*({DOTPOINT_PATTERN}|{NUMBERING_PATTERN}|{LETTERING_PATTERN}|{DASHPOINT_PATTERN})[ \t]+'  # Get the full pattern for colour delegation
 
+DPI_AWARE_MODES = ['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware']
 
 class AutoScrollbar(ttk.Scrollbar):
     """
@@ -1926,7 +1927,6 @@ class TimeTable:
     def __init__(self, master, classes: list[str], teachers: list[str], rooms: list[str], class_mapping: list[list[int]], event_data: list[dict], day_start_time: str, sessions: list[tuple[str, bool, str]], start_date: int) -> None:
         self.master: Window = master
 
-        # self.classname_str = classes  # Store the names of each class as strings  # Todo: depreciated, can be removed
         self.class_mapping = class_mapping
         self.start_timestamp = start_date
         self.day_start_time = day_start_time
@@ -2328,7 +2328,7 @@ class TimeTable:
         cursor_position = self.event_entry.index(tk.INSERT).split('.')[0]  # Get the line number of the cursor position
         tags = self.event_entry.tag_names(cursor_position + '.0')  # Get the text tags for the same line as the cursor
 
-        ## TODO: behaviour with text selection
+        ## TODO: Test behaviour with text selection
 
         list_mode = ['DOTPOINT' in tags, 'NUMBERING' in tags, 'LETTERING' in tags]  # Check weather any of the supported dotpoint / numbering formats are in the selected line
 
@@ -3357,7 +3357,7 @@ class SettingsWindow(tk.Toplevel):
 
         self.root: Window = root
 
-        self.attributes('-topmost', True)  # Set the window to be the topmost
+        # self.attributes('-topmost', True)  # Set the window to be the topmost
         self.grab_set()  # Direct all events to this window
         self.title('Settings')  # Set the window title
         self.root.call('wm', 'iconphoto', str(self), self.root.icons['window_icon2'])  # Set the window icon
@@ -3372,7 +3372,7 @@ class SettingsWindow(tk.Toplevel):
         self.editor_font = tk.StringVar(self, root.settings['editor.font'][0])
         self.editor_size = tk.IntVar(self, root.settings['editor.font'][1])
         self.editor_style = tk.StringVar(self, root.settings['editor.font'][2].title())
-        self.dpi_awareness = tk.StringVar(self, ['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware'][root.settings['dpi_awareness']])
+        self.dpi_awareness = tk.StringVar(self, DPI_AWARE_MODES[root.settings['dpi_awareness']])
         self.ui_scaling = tk.StringVar(self, str(root.settings['ui_scaling']))
 
         ## Define default formatting for UI elements
@@ -3421,7 +3421,7 @@ class SettingsWindow(tk.Toplevel):
 
         tk.Label(frame, text='DPI Awareness', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), **labelconfig).grid(row=0, column=0, sticky='nswe', padx=1, pady=(1, 0), columns=2)
         tk.Label(frame, text='DPI awareness for the application.', foreground='#777', font=('Calibri', 10, 'italic'), **labelconfig).grid(row=1, column=0, sticky='nswe', padx=1, pady=(0, 0), columns=2)
-        self.resolution_entry = CustomComboBox(frame, style='TCombobox', textvariable=self.dpi_awareness, values=['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware'], state='readonly')
+        self.resolution_entry = CustomComboBox(frame, style='TCombobox', textvariable=self.dpi_awareness, values=DPI_AWARE_MODES, state='readonly')
         self.resolution_entry.grid(row=2, column=0, sticky='nswe', padx=1, pady=(0, 1), columns=2)
 
         ## ------------------------------------------ UI Scaling ------------------------------------------
@@ -3486,7 +3486,7 @@ class SettingsWindow(tk.Toplevel):
         return {
             'default.path': self.default_path.get(),
             'editor.font': [self.editor_font.get().title(), int(self.editor_size.get()), self.editor_style.get().lower()],
-            'dpi_awareness': ['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware'].index(self.ui_scaling.get()),
+            'dpi_awareness': DPI_AWARE_MODES.index(self.dpi_awareness.get()),
             'ui_scaling': float(self.ui_scaling.get())
         }
 
@@ -3503,13 +3503,16 @@ class SettingsWindow(tk.Toplevel):
             if settings_dict['editor.font'] != self.root.settings['editor.font']:  # If the font has been changed, update the font of the timetable event text entry
                 self.root.timetable.entry_font.configure(family=self.editor_font.get(), size=self.editor_size.get(), slant='italic' if 'italic' in self.editor_style.get().lower() else 'roman', weight='bold' if 'bold' in self.editor_style.get().lower() else 'normal')
 
-            ## Update the UI scaling if it has been changed
-            if settings_dict['ui_scaling'] != self.root.settings['ui_scaling']:
-                self.root.tk.call('tk', 'scaling', float(self.ui_scaling.get()))
+            if settings_dict['dpi_awareness'] != self.root.settings['dpi_awareness'] or settings_dict['ui_scaling'] != self.root.settings['ui_scaling']:
+                ## Update the UI scaling if it has been changed
+                if settings_dict['ui_scaling'] != self.root.settings['ui_scaling']:
+                    self.root.tk.call('tk', 'scaling', float(self.ui_scaling.get()))
 
-            ## Update the DPI awareness if it has been changed
-            if settings_dict['dpi_awareness'] != self.root.settings['dpi_awareness']:
-                ctypes.windll.shcore.SetProcessDpiAwareness(int(self.dpi_awareness.get()))
+                ## Update the DPI awareness if it has been changed
+                if settings_dict['dpi_awareness'] != self.root.settings['dpi_awareness']:
+                    ctypes.windll.shcore.SetProcessDpiAwareness(DPI_AWARE_MODES.index(self.dpi_awareness.get()))
+
+                mb.showinfo('Restart Required', 'The program must be restarted for these changes to take effect.')
 
             self.root.settings.update(settings_dict)  # Update the settings dictionary with the new values
 
