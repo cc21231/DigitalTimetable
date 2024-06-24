@@ -52,6 +52,7 @@ INDENT_PATTERN = rf'(\n|\A)[ \t]*({DOTPOINT_PATTERN}|{NUMBERING_PATTERN}|{LETTER
 
 DPI_AWARE_MODES = ['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware']
 
+
 class AutoScrollbar(ttk.Scrollbar):
     """
     :From: https://stackoverflow.com/a/48137257
