@@ -2,7 +2,7 @@
 =========================================
 Program Name  : Timetable.py
 Author        : Connor Bateman
-Version       : v2.27.1
+Version       : v2.28.1
 Revision Date : 21-06-2024
 Dependencies  : requirements.txt
 =========================================
@@ -40,7 +40,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.ttfonts import TTFont
 
-VERSION = '2.27.1'
+VERSION = '2.28.1'
 
 ## Define regex patterns for the supported numbering and dotpoint formats
 DASHPOINT_PATTERN = r'(?P<DASHPOINT>[>\-])'
@@ -48,9 +48,20 @@ DOTPOINT_PATTERN = r'(?P<DOTPOINT>[•o])'
 LETTERING_PATTERN = r'(?P<LETTERING>(([A-Z]{1,2})|([a-z]{1,2}))[\):])'
 NUMBERING_PATTERN = r'(?P<NUMBERING>[0-9]{1,2}[\.\):])'
 
-INDENT_PATTERN = rf'(\n|\A)[ \t]*({DOTPOINT_PATTERN}|{NUMBERING_PATTERN}|{LETTERING_PATTERN}|{DASHPOINT_PATTERN})[ \t]+'  # Get the full pattern for colour delegation
+INDENT_HIGHLIGHT_PATTERN = rf'(\n|\A)[ \t]*({DOTPOINT_PATTERN}|{NUMBERING_PATTERN}|{LETTERING_PATTERN}|{DASHPOINT_PATTERN})[ \t]+'  # Get the full pattern for colour delegation
+INDENT_PATTERN = r'[ \t]*(?P<dotpoints_and_numbering>(?P<CAP_Lettering>[A-Z]{1,2}[):])|(?P<LOW_Lettering>[a-z]{1,2}[):])|(?P<Numbering>[0-9]{1,2}[.):])|[>•o-])?[ \t]+'
 
-DPI_AWARE_MODES = ['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware']
+DPI_AWARE_MODES = ['DPI Unaware', 'System DPI Aware', 'Per Monitor DPI Aware']  # DPI awareness modes for the settings menu
+
+## Define colour mapping for event types
+EVENT_TYPE_COLOUR_MAPPING = {
+    'Event': ('#e06c75', '#443E47'),
+    'Info': ('#528bff', '#465E86'),
+    'Reminder': ('#56b6c2', '#476975'),
+    'Bookmark': ('#98c379', '#596D61'),
+    'Assignment': ('#c678dd', '#66587D'),
+    'Test': ('#abb2bf', '#5E6875'),
+}
 
 
 class AutoScrollbar(ttk.Scrollbar):
@@ -576,12 +587,25 @@ class ScrollableFrame:
     Config for the outer (static) container can be defined by specifying arguments with the prefix "c_" and config for the inner (scrollable) container can be defined by specifying arguments with the prefix "f_".
 
     :param master: The parent widget
+
+    :keyword hscrollbar: The scrollbar widget to which the x-scroll command should be bound
+    :keyword vscrollbar: The scrollbar widget to which the y-scroll command should be bound
+
+    The scroll factor controls the sensitivity of the mousewheel scroll for each axis.
+    Any value between -120 and 0 or 120 and 0, not including 0.
+    ±120 is the minimum sensitivity any any value above 0 has inverted sensitivity.
+    :keyword yscrollfactor: Scroll factor for the y-axis.
+    :keyword xscrollfactor: Scroll factor for the x-axis.
     """
 
     def __init__(self, master, **kwargs) -> None:
-        ## Get the scrollbars
+        ## Get the scrollbar widget to link to the canvas scroll for each axis
         hscrollbar: tk.Scrollbar = kwargs.pop('hscrollbar') if 'hscrollbar' in kwargs else None
         vscrollbar: tk.Scrollbar = kwargs.pop('vscrollbar') if 'vscrollbar' in kwargs else None
+
+        ## Get the scroll factor for each axis
+        self.yscrollfactor: int | float = kwargs.pop('yscrollfactor') if 'yscrollfactor' in kwargs else -120
+        self.xscrollfactor: int | float = kwargs.pop('xscrollfactor') if 'xscrollfactor' in kwargs else -120
 
         ## Get the config kwargs for the scrolling frame and canvas based on their respective prefix
         canvas_config = {k.removeprefix('c_'): v for k, v in kwargs.items() if k.startswith('c_')}
@@ -613,6 +637,12 @@ class ScrollableFrame:
         ## Bind changes in size for both components to the appropriate functions
         self.frame.bind('<Configure>', lambda v: self._configure_interior())
         self.canvas.bind('<Configure>', lambda v: self._configure_canvas())
+
+        ## Todo: Bind Button-4 and Button-5 to scroll
+        ## Bind scrolling with the mousewheel to scroll the canvas widget.
+        ## Pressing the `Shift` key changes the scroll axis.
+        self.canvas.bind_all('<MouseWheel>', lambda v: self.canvas.yview_scroll(round(v.delta / self.yscrollfactor), 'units'))
+        self.canvas.bind_all('<Shift-MouseWheel>', lambda v: self.canvas.xview_scroll(round(v.delta / self.xscrollfactor), 'units'))
 
     def _configure_interior(self) -> None:
         """
@@ -1295,7 +1325,7 @@ class IndentText(tk.Text):
         self.cdg = ic.ColorDelegator()  # Create a colour delegator for highlighting dotpoints.
         self.cdg.tagdefs = dict()  # Remove the colour delegator’s default tags
 
-        self.cdg.prog = re.compile(INDENT_PATTERN, re.S)  # Compile the calculated pattern and set it as the prog for the colour delegator.
+        self.cdg.prog = re.compile(INDENT_HIGHLIGHT_PATTERN, re.S)  # Compile the calculated pattern and set it as the prog for the colour delegator.
         self.cdg.idprog = re.compile(r'\s+(?P<Words>\w+)', re.S)  # Define the pattern for words in the colour delegator
 
         ## Define the formatting for each dotpoint and numbering format
@@ -1490,7 +1520,7 @@ class IndentText(tk.Text):
             line = self.get(f'{linenum}.0', f'{linenum}.end')
 
         ## Match the indentation pattern
-        re_match = re.match(r'[ \t]*(?P<dotpoints_and_numbering>(?P<CAP_Lettering>[A-Z]{1,2}[):])|(?P<LOW_Lettering>[a-z]{1,2}[):])|(?P<Numbering>[0-9]{1,2}[.):])|[>•o-])?[ \t]+', line)
+        re_match = re.match(INDENT_PATTERN, line)
 
         ## If there is a match, return the matching portion of the line.
         if re_match is not None and re_match.start() == 0:
@@ -1629,20 +1659,28 @@ class Event:
     :param session: The session number of the event.
     :param text: The event text to store.
     :param tags: The tags for the event (currently does nothing).
-    :param event_type: The type string of the event.
+    :param etype: The type string of the event.
     """
 
-    def __init__(self, week: int, day: int, session: int, text: str, tags: Optional[list], event_type: str) -> None:
+    def __init__(self, master, week: int, day: int, session: int, text: str, tags: Optional[list], etype: str, title: str) -> None:
         ## Get the week, day, and session number for the event
         self.week = week
         self.day = day
-        self.session = session
+        self.session: int = session
+
+        master: TimeTable = master
 
         ## Get the formatting for the event
         self.text = text
+
+        self.title = tk.StringVar(master.display_frame, value=title)
+        self.title.trace('w', lambda a, b, c: master.check_saved(master.get_json()))
+
         self.tags = tags
-        self.event_type = tk.StringVar(value=event_type)
+        self.event_type = tk.StringVar(master.display_frame, value=etype)
         self.type = self.event_type.get
+
+        self.display_widget: Optional[UpcomingEvent] = None  # Stores an Upcoming Event widget associated with the event
 
     @dispatch(tuple)
     def __eq__(self, other) -> bool:
@@ -1675,14 +1713,15 @@ class Event:
         Get the event’s data in dictionary form to be written to a timetable JSON file
         """
 
-        data = {
-            'week': self.week,
-            'day': self.day,
-            'session': self.session,
-            'data': enclose(multireplace(self.text, {'"': '\\"', '\n': '\\n', '\t': '\\t'}), '"'),
-            'tags': list(map(lambda v: v.replace('"', '\\"'), self.tags)) if self.tags is not None else 'null',
-            'type': enclose(self.type(), '"')
-        }
+        data = dict(
+            title=enclose(multireplace(self.title.get(), {'"': '\\"', '\n': '\\n', '\t': '\\t'}), '"'),
+            week=self.week,
+            day=self.day,
+            session=self.session,
+            text=enclose(multireplace(self.text, {'"': '\\"', '\n': '\\n', '\t': '\\t'}), '"'),
+            tags=list(map(lambda v: v.replace('"', '\\"'), self.tags)) if self.tags is not None else 'null',
+            etype=enclose(self.type(), '"')
+        )
         return data
 
     def __gt__(self, other) -> bool:
@@ -1693,10 +1732,32 @@ class Event:
         """ Check if the event occurs before the input event """
         return self.day < other.day or (self.day == other.day and self.session < other.session)
 
+    @dispatch(tuple)
+    def __ge__(self, other: tuple) -> bool:
+        """ Check if the event occurs at the same time or later than the input event. 'Other' tuple can be either the day and session, or the week, day, and session """
+        if len(other) == 2:  # Check the length of the 'other' tuple
+            ## Compare day number and session number
+            return self.day > other[0] or (self.day == other[0] and self.session >= other[1])
+        else:
+            ## Compare week number, day number, and session number
+            return self.week > other[0] or (self.week == other[0] and self.day > other[1]) or (self.week == other[0] and self.day == other[1] and self.session >= other[2])
+
+    @dispatch(object)
     def __ge__(self, other) -> bool:
         """ Check if the event occurs at the same time or later than the input event """
         return self.day > other.day or (self.day == other.day and self.session >= other.session)
 
+    @dispatch(tuple)
+    def __le__(self, other: tuple) -> bool:
+        """ Check if the event occurs at the same time or earlier than the input event. 'Other' tuple can be either the day and session, or the week, day, and session """
+        if len(other) == 2:  # Check the length of the 'other' tuple
+            ## Compare day number and session number
+            return self.day < other[0] or (self.day == other[0] and self.session <= other[1])
+        else:
+            ## Compare week number, day number, and session number
+            return self.week < other[0] or (self.week == other[0] and self.day < other[1]) or (self.week == other[0] and self.day == other[1] and self.session <= other[2])
+
+    @dispatch(object)
     def __le__(self, other) -> bool:
         """ Check if the event occurs at the same time or earlier than the input event """
         return self.day < other.day or (self.day == other.day and self.session <= other.session)
@@ -1910,6 +1971,218 @@ class SessionCell(TimetableCell):
             self.room_display.configure(textvariable=self.room)
 
 
+class UpcomingEvent(tk.Frame):
+    """
+    A widget that displays information about upcoming events.
+
+    :param root: (TimeTable) The root timetable widget
+    :param event: The widget’s associated event
+    """
+
+    def __init__(self, root, event: Event, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.event: Event = event
+        self.root: TimeTable = root
+
+        ## Configure the widget’s grid
+        self.rowconfigure(3, weight=1)
+        self.columnconfigure(0, weight=1)
+
+        ## Configure the widget’s formatting
+        self.configure(background='#000', padx=2)
+
+        self.due_after: Optional[str] = None
+        self.event_date: Optional[datetime.datetime] = None
+
+        ## Define default formatting for UI elements
+        labelconfig = dict(background='#303841', foreground='#D8DEE9', font=('Calibri', 11), compound='center', highlightthickness=1, highlightbackground='#3B434C')
+        buttonconfig = dict(background='#3B434C', foreground='#D8DEE9', activebackground='#2E3238', mouseoverbackground='#3B434C', font=('Calibri', 11), compound='center', highlightbackground='#4F565E')
+
+        ## ======================================== User Interface ========================================
+
+        ## ------------------------------------- Event Title and Type -------------------------------------
+        frame = tk.Frame(self, background='#222')
+        frame.grid(row=0, column=0, sticky='nswe', padx=0, pady=(20, 3))
+        frame.columnconfigure(1, weight=1)
+
+        self.event_type_display = tk.Label(frame, image=self.root.master.icons[self.event.event_type.get() + '-Mask'], height=20, width=23, background=EVENT_TYPE_COLOUR_MAPPING[self.event.event_type.get()][0], highlightthickness=1, highlightbackground='#3B434C')
+        self.event_type_display.grid(row=0, column=0, sticky='nswe', padx=0, pady=(0, 0))
+
+        self.event_title_display = tk.Label(frame, image=self.root.master.pixel, compound='center', anchor='w', height=20, text=' ', textvariable=self.event.title, background=EVENT_TYPE_COLOUR_MAPPING[self.event.event_type.get()][1], foreground='#D8DEE9', font=('Calibri', 13, 'bold'), highlightthickness=1, highlightbackground='#3B434C')
+        self.event_title_display.grid(row=0, column=1, sticky='nswe', padx=(1, 0), pady=(0, 0))
+
+        ## ---------------------------------------- Event Time Info ---------------------------------------
+        ## Create a display for the remaining time until the event begins
+        self.time_remaining_display = tk.Label(self, image=self.root.master.pixel, height=14, **labelconfig)
+        self.time_remaining_display.grid(row=1, column=0, sticky='nswe', padx=0, pady=(0, 3))
+
+        ## Todo: assign custom start times for events
+        ## Create display labels for the date, week, and session of the event
+        frame = tk.Frame(self, background='#222')
+        frame.grid(row=2, column=0, sticky='nswe', padx=0, pady=(0, 3))
+        frame.columnconfigure((0, 1, 2), weight=1)
+
+        ## Date and time
+        tk.Label(frame, image=self.root.master.pixel, height=14, text='Date', background='#424D59', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), compound='center', highlightthickness=1, highlightbackground='#4F565E').grid(row=0, column=0, sticky='nswe', padx=(0, 1), pady=(0, 1))
+
+        self.date_display = tk.Label(frame, image=self.root.master.pixel, height=28, **labelconfig)
+        self.date_display.grid(row=1, column=0, sticky='nswe', padx=(0, 1), pady=(0, 0))
+
+        ## Week number and day of the week
+        tk.Label(frame, image=self.root.master.pixel, height=14, text='Day', background='#424D59', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), compound='center', highlightthickness=1, highlightbackground='#4F565E').grid(row=0, column=1, sticky='nswe', padx=(2, 1), pady=(0, 1))
+
+        self.week_display = tk.Label(frame, image=self.root.master.pixel, height=28, **labelconfig)
+        self.week_display.grid(row=1, column=1, sticky='nswe', padx=(2, 1), pady=(0, 0))
+
+        ## Session number and name
+        tk.Label(frame, image=self.root.master.pixel, height=14, text='Session', background='#424D59', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), compound='center', highlightthickness=1, highlightbackground='#4F565E').grid(row=0, column=2, sticky='nswe', padx=(2, 0), pady=(0, 1))
+
+        self.session_display = tk.Label(frame, image=self.root.master.pixel, height=28, **labelconfig)
+        self.session_display.grid(row=1, column=2, sticky='nswe', padx=(2, 0), pady=(0, 0))
+
+        ## --------------------------------------- Event Text Display -------------------------------------
+        self.event_text_display = tk.Label(self, image=self.root.master.pixel, anchor='nw', text=self.event.text, background='#303841', foreground='#D8DEE9', font=('Calibri', 11), compound='center', highlightthickness=1, highlightbackground='#3B434C')
+        self.event_text_display.grid(row=3, column=0, sticky='nswe', padx=0, pady=(0, 3))
+
+        MouseoverButton(self, text='View Event', command=lambda: self.root.view(self.event), image=self.root.master.pixel, height=18, width=100, highlightthickness=1, **buttonconfig).grid(row=4, column=0, sticky='nswe', padx=0, pady=(0, 0))  # .grid(row=1, column=1, sticky='nswe', padx=(0, 1), pady=(0, 0))
+
+        self.update_event_time()  # Update the values of the data displays
+
+        ## Todo:
+        ##    [x] Update Times
+        ##    [x] Delete with event
+        ##    [x] Do not include past events > 1 hour ago
+        ##    [ ] Button to view event
+        ##    [ ] Update event type
+        ##    [ ] Update event text
+        ##    [ ] Destroy widget when passed due
+        ##    [ ] View method for timetable
+        ##    [ ] Update time when edited
+
+    def update_event_type(self) -> None:
+        """ Update the formatting of the event type and title displays to match the event type """
+        etype = self.event.event_type.get()  # Get the event type name
+        colour_mapping = EVENT_TYPE_COLOUR_MAPPING[etype]  # Get the colour formatting associated with the event type
+
+        ## Update the background colours of the event type and title displays
+        self.event_type_display.configure(image=self.root.master.icons[etype + '-Mask'], background=colour_mapping[0])
+        self.event_title_display.configure(background=colour_mapping[1])
+
+    def update_due_time(self) -> None:
+        """ Update the displayed 'time until due' and schedule the next update """
+        ## Todo: format bg of cells with events
+        print('update_due')
+
+        time_remaining = self.get_time_remaining()  # Get the days, hours, minutes, and seconds until the start of the event
+        tr_icon = 'passed-event' if time_remaining[0] else 'upcoming-event'  # Get the icon to use for the 'time until due' display based on if the event has passed or not.
+        time_remaining_str = self.time_remaining_str(time_remaining)  # Get the string to display
+
+        ## Update the configuration of the 'time until due' display
+        self.time_remaining_display.configure(text=f'Due {time_remaining_str}', image=self.root.master.icons[tr_icon], compound='left')  # Update the displayed text in the time remaining display
+
+        ## Get the number of milliseconds until the display needs to be updated again based on the “precision” of the displayed time
+        if time_remaining[1] > 5:  # If the time difference is more than 5 days, set the update interval to one day
+            after_ms = 86400000
+        elif time_remaining[1]:  # If the time difference is one or more day(s), set the update interval to one hour
+            after_ms = 3600000
+        elif time_remaining[2]:  # If the time difference is one or more hour(s), set the update interval to one minute
+            after_ms = 60000
+        else:  # Otherwise, set the update interval to one second.
+            after_ms = 1000
+
+        self.due_after = self.after(after_ms, self.update_due_time)  # Schedule the next screen update
+
+    def update_event_time(self) -> None:
+        """ Update the stored starting timestamp of the widget’s associated event and update the displayed time values. """
+
+        self.event_date = self.get_date()  # Get the datetime date object representing the start of the associated event.
+
+        if self.due_after is not None:  # Cancel the scheduled UI element update if one exists
+            self.after_cancel(self.due_after)
+
+        self.update_due_time()  # Update the displayed time until due
+
+        ## Get the class name to display
+        if self.event.day > 4:
+            event_class_name = 'All Day'
+        else:
+            event_class_name = self.root.classes[self.root.class_mapping[self.event.day][self.event.session]].name().replace('\n', ' ')
+
+        ## Update the displayed time information.
+        self.date_display.configure(text=f'{self.event_date.day}{"ˢᵗ" if str(self.event_date.day)[-1] == "1" else ["ᵗʰ", "ʳᵈ"][str(self.event_date.day)[-1] == "2"]} {self.event_date.strftime("%b")}'.format(hours=self.event_date.hour) + '\n' + self.event_date.strftime(f'%H:%M %p').strip('0'))
+        self.session_display.configure(text=f'Session {self.event.session}\n{event_class_name}')
+        self.week_display.configure(text=f'{self.event_date.strftime(f'%A')}\nWeek {self.event.week}')
+
+    def get_date(self) -> datetime.datetime:
+        """ Get the datetime date object corresponding to the start timestamp of the widget’s associated event. """
+        event_timestamp = self.root.start_timestamp  # Get the timestamp of the starting week for the timetable
+
+        hour, minute = self.root.sessiontimes[self.root.get_timeslot_index(self.event.session)]  # Get the hours and minutes of the start time for the session
+
+        ## Calculate the number of seconds since the timetable start timestamp that the event occurs at.
+        event_timestamp += 604800 * self.event.week + 86400 * self.event.day + 3600 * hour + 60 * minute
+
+        event_date = datetime.datetime.fromtimestamp(event_timestamp)  # Convert the timestamp into a datetime date
+        return event_date
+
+    def get_time_remaining(self) -> list[int | bool]:
+        """ Get the time remaining until or times since the start of the event """
+
+        time_remaining = self.event_date.timestamp() - datetime.datetime.now().timestamp()  # Calculate the difference in time between the start of the event and the current time
+        is_negative = time_remaining < 0  # Check if the event has already passed (i.e.: the time remaining is negative).
+        time_remaining = abs(time_remaining)  # Get the absolute value of the time difference
+
+        ## Convert the time difference from seconds into days, hours, minutes, and seconds
+        days_remaining = int(time_remaining / 86400)
+        time_remaining -= 86400 * days_remaining
+
+        hours_remaining = int(time_remaining // 3600)
+        time_remaining -= 3600 * hours_remaining
+
+        minutes_remaining = int(time_remaining // 60)
+        seconds_remaining = int(time_remaining - 60 * minutes_remaining)
+
+        time_remaining_list = [is_negative, days_remaining, hours_remaining, minutes_remaining, seconds_remaining]
+
+        ## Return the result
+        return time_remaining_list
+
+    @staticmethod
+    def time_remaining_str(time_remaining: list[int | bool]) -> str:
+        """
+        Convert the time remaining from a tuple containing days, hours, minutes, and seconds to a string to display
+
+        :param time_remaining: The time difference between the event’s starting time and the current time in the format [is_negative, days, hours, minutes, seconds]
+        """
+
+        is_negative = time_remaining.pop(0)  # Remove the first element from the time remaining list (a boolean describing if the event has passed or not)
+
+        idx = 0  # Declare a variable to hold the starting index of the components in the time difference list to include in the output string
+
+        if time_remaining[0] > 5:  # If the time difference is more than 5 days
+            precision = 1  # Set the precision to 1 (Only use one item from the time difference list)
+            if any(time_remaining[1:]):  # If there is more than exactly the number of days in the time difference list remaining
+                time_remaining[0] += 1  # Add 1 to the number of days
+        else:
+            precision = 2  # Set the precision to 2 (Use two items from the time difference list)
+
+            ## Get the index of the first part of the time difference list that is not 0
+            while time_remaining[idx] == 0:
+                idx += 1
+
+        outstring = ['' if is_negative else 'in']  # Add 'in' to the output string if the event has not already passed
+
+        ## Iterate through the items in the time difference list, starting from the first non-zero item and continuing for the precision number
+        for name, value in zip(['Day', 'Hour', 'Minute', 'Second'][idx:idx + precision], time_remaining[idx:idx + precision]):
+            ## Add the value of the time step, its name, and pluralise if necessary
+            outstring.append(f'{value} {name}{"" if value == 1 else "s"}')
+
+        outstring.append('ago' if is_negative else '')  # Add 'ago' to the output string if the event has already passed.
+
+        return ' '.join(outstring)  # Join the components of the output string with spaces and return the result.
+
+
 class TimeTable:
     """
     Manages a single timetable and its supporting UI elements
@@ -1932,14 +2205,15 @@ class TimeTable:
         self.start_timestamp = start_date
         self.day_start_time = day_start_time
 
-        self.events = list(map(lambda v: Event(*list(v.values())), event_data))  # Create an event object for each event in the event data dictionary and add them to a list
-
         ## Create a container to hold the entire timetable
         self.display_frame = tk.Frame(master, background='#222')
         self.display_frame.columnconfigure(1, weight=1)
         self.display_frame.columnconfigure(2, minsize=352)
         self.display_frame.rowconfigure(0, weight=1)
         self.grid = self.display_frame.grid
+
+        self.events = list(map(lambda v: Event(self, **v), event_data))  # Create an event object for each event in the event data dictionary and add them to a list
+        self.events.sort(key=list)  # Sort the list of events by their timeslot obtained by converting the event to an iterable
 
         ## Convert the class data to class objects
         self.classes = []
@@ -1958,7 +2232,7 @@ class TimeTable:
         self.empty_text_variable = tk.StringVar(self.display_frame, '')
         self.null_text_variable = tk.StringVar(self.display_frame, '<Null>')
 
-        ## Define default and state based formatting for UI elements
+        ## Define default and state-based formatting for UI elements
         self.cell_state_config = {
             'normal': ({'background': '#303841', 'foreground': '#D8DEE9'}, '#3B434C'),
             'active': ({'background': '#4F565E', 'foreground': '#D4D6D7'}, '#62686F'),
@@ -1994,9 +2268,10 @@ class TimeTable:
         self.weekframe = tk.Frame(frame, background='#222')
         self.weekframe.grid(row=1, column=1, sticky='NSWE', pady=(0, 0))
         self.weekframe.rowconfigure(list(range(12)), weight=1)
-        self.weekframe.columnconfigure(1, weight=1, minsize=133)
+        self.weekframe.columnconfigure(1, weight=1, minsize=150)
         self.week_elems = []
 
+        ## Add the week display elements to the week frame
         for i in range(12):
             frame = WeekFrame(self, i, self.weekframe, background='#303841', highlightbackground='#3B434C', highlightthickness=1)
             frame.grid(row=i, column=1, sticky='nswe', padx=(0, 0), pady=(int(i == 0), 1))
@@ -2005,7 +2280,7 @@ class TimeTable:
         ## ------------------------------------------ Edit Sidebar ----------------------------------------
 
         self.sidebar = tk.Frame(self.display_frame, background='#222', width=352)
-        self.sidebar.grid(column=2, row=0, sticky='NSWE')
+        self.sidebar.grid(column=2, row=0, sticky='NSWE', padx=(3, 0))
         self.sidebar.rowconfigure(11, weight=1)
         self.sidebar.columnconfigure(0, weight=1)
 
@@ -2018,8 +2293,18 @@ class TimeTable:
         entryborder.columnconfigure(0, weight=1)
         entryborder.rowconfigure(1, weight=1)
 
+        frame = tk.Frame(entryborder, background='#4F565E')
+        frame.grid(row=0, column=0, sticky='NSWE', columns=2, pady=(1, 0), padx=1)
+        frame.columnconfigure(1, weight=1)
+        frame.rowconfigure(0, weight=1)
+
+        tk.Label(frame, background='#424D59', foreground='#D8DEE9', font=('Calibri', 12), text='Title', width=4).grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky='nswe')
+
+        self.event_title_entry = Entry(frame, text='Untitled Event', style='title.TEntry', font=('Calibri', 13, 'bold'), validatecommand=self.validate_event_title, validate='focusout')
+        self.event_title_entry.grid(row=0, column=1, sticky='NSWE', padx=(1, 0))
+
         self.formatting_frame = tk.Frame(entryborder, background='#4F565E')
-        self.formatting_frame.grid(row=0, column=0, sticky='NSWE', padx=1, pady=(1, 0))
+        self.formatting_frame.grid(row=1, column=0, columns=2, sticky='NSWE', padx=1, pady=(1, 0))
 
         self.numbering_format = tk.IntVar(self.display_frame, 0)
 
@@ -2032,10 +2317,10 @@ class TimeTable:
         CustomRadiobutton(self.formatting_frame, image=self.master.icons['lettering'], padx=5, pady=5, indicatoron=False, relief='flat', borderwidth=0, foreground='#aaa', background='#272E35', activebackground='#3E4244', width=20, height=9, compound='center', selectcolor='#323B44', selectforeground='#09f', value=3, variable=self.numbering_format, command=lambda: self.update_list_format()).grid(row=0, column=3, padx=(0, 1), pady=0, sticky='nswe')
 
         self.event_entry = IndentText(self, entryborder, background='#303841', undo=True, foreground='#D8DEE9', highlightthickness=0, highlightbackground='#4F565E', insertbackground='#F9AE58', borderwidth=0, font=self.entry_font, width=1, height=7, tab_spaces=8)
-        self.event_entry.grid(row=1, column=0, sticky='NSWE', padx=1, pady=(1, 1))
+        self.event_entry.grid(row=2, column=0, sticky='NSWE', padx=1, pady=(1, 1))
 
         self.event_scrollbar = AutoScrollbar(entryborder, orient='vertical', command=self.event_entry.yview, style='Custom.Vertical.TScrollbar')
-        self.event_scrollbar.grid(row=1, column=1, sticky='NS', padx=(0, 1), pady=(1, 1))
+        self.event_scrollbar.grid(row=2, column=1, sticky='NS', padx=(0, 1), pady=(1, 1))
 
         self.event_entry.configure(yscrollcommand=self.event_scrollbar.set)
 
@@ -2122,6 +2407,20 @@ class TimeTable:
         self.teacher_entry = ttk.Entry(entryframe, style='stipple.TEntry')
         self.teacher_entry.grid(row=2, column=1, sticky='nswe', padx=1, pady=(1, 1))
 
+        ## -------------------------------------- Upcoming Events UI --------------------------------------
+
+        tk.Label(self.sidebar, text='Upcoming Events', background='#303841', foreground='#D8DEE9', highlightthickness=1, highlightbackground='#4F565E', borderwidth=0, font=('Calibri', 13), image=master.pixel, compound='center', height=19).grid(row=7, column=0, sticky='NSWE', padx=1, pady=(0, 2))
+
+        events_frame = tk.Frame(self.sidebar, background='#222')
+        events_frame.grid(row=8, column=0, sticky='NSWE')
+        events_frame.columnconfigure(0, weight=1)
+
+        self.event_vscrollbar = ttk.Scrollbar(events_frame, orient='vertical', style='Custom.Vertical.TScrollbar')
+        self.event_vscrollbar.grid(row=0, column=1, sticky='ns', padx=(0, 0), pady=0)
+
+        self.upcoming_events_frame = ScrollableFrame(events_frame, vscrollbar=self.event_vscrollbar, c_highlightthickness=1, c_background='#000', c_highlightbackground='#3B434C', f_background='#000')
+        self.upcoming_events_frame.grid(row=0, column=0, sticky='nswe', padx=(0, 1), pady=0)
+
         ## ----------------------------------------- Table Display ----------------------------------------
 
         self.table_frame = tk.Frame(self.display_frame, background='#222')
@@ -2180,6 +2479,33 @@ class TimeTable:
         self.current_session_marker = tk.Frame(self.table_frame, background='#8C3841', highlightthickness=1, highlightbackground='#969CA3')
         self.current_session_marker.bind('<Button-1>', lambda v: self.select(self.day, self.timeslot_idx))
         pywinstyles.set_opacity(self.current_session_marker.winfo_id(), 0.2)
+
+        self.upcoming_event_headers = dict()  # Declare a dictionary to hold the header widgets indexed by the day and week number
+        self.upcoming_events: list[UpcomingEvent | tk.Frame] = []  # Declare a list to hold the upcoming event widgets
+
+        ## Iterate through the events that have not already occurred.
+        for i in filter(lambda v: v >= (self.week, self.day, self.get_session(datetime.datetime.now())), self.events):
+            ## Todo: add the event header generation to a function
+            ## If there is not a header for the event's day and week number
+            if (i.week, i.day) not in self.upcoming_event_headers:
+                ## Create a header frame and add it to the scrollable frame
+                header = tk.Frame(self.upcoming_events_frame.frame, background='#4F565E')
+                header.pack(side='top', expand=True, fill='x', padx=(1, 1), pady=(20, 0))
+                header.event = (i.week, i.day, 0)  # Set the event data used to compare event times for the header widget
+
+                ## Add a label to the header frame
+                tk.Label(header, text=f'{["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i.day]} Week {i.week}', background='#66587D', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), image=self.master.pixel, compound='center', height=20).pack(side='left', expand=True, fill='x', padx=(1, 1), pady=1)
+                tk.Label(header, background='#c678dd', image=self.master.pixel, compound='center', width=46, height=20).pack(side='left', padx=(0, 1), pady=1)
+
+                self.upcoming_events.append(header)  # Add the header to the list of upcoming event widgets
+                self.upcoming_event_headers.update({(i.week, i.day): header})  # Add the header to the header dictionary keyed by the day and week number
+
+            ## Create an upcoming event widget for the event
+            upcoming_event = UpcomingEvent(self, i, self.upcoming_events_frame.frame)
+            upcoming_event.pack(side='top', expand=True, fill='x', padx=(1, 1), pady=(0, 0))
+
+            i.display_widget = upcoming_event  # Set the event’s display widget
+            self.upcoming_events.append(upcoming_event)  # Add the upcoming event widget to the list.
 
         self.increment_timeslot()  # Update the displayed timeslot
 
@@ -2319,6 +2645,12 @@ class TimeTable:
             self.event_entry.replace(f'{pos[0]}.0', f'{pos[1]}.end', '\n'.join(new_lines[::-1]))  # Add the updated lines to the text widget
             self.event_entry.tag_add('sel', f'{pos[0]}.0', f'{pos[1]}.end')  # Select the updated lines
 
+    def validate_event_title(self) -> bool:
+        """ If the user focuses out of the event title entry and it’s contents are blank, add default text to the entry. """
+        if self.event_title_entry.get().strip() == '':
+            self.event_title_entry.set('Untitled Event')
+        return True
+
     def on_edit(self, skip_after: bool = False) -> None:
         """
         Update the numbering mode and syntax highlighting when the text widget is modified.
@@ -2359,6 +2691,11 @@ class TimeTable:
 
         if day is not None and session is not None:
             self.tt_elements[day][session].toggle_selected()
+
+    def view(self, event: Event) -> None:
+        """ View the input event """
+        self.update_week(event.week)
+        self.tt_elements[event.day][event.session].toggle_selected()
 
     def increment_timeslot(self) -> None:
         """
@@ -2481,8 +2818,6 @@ class TimeTable:
         if self.current_savefile_contents is None:  # If the savefile contents string is empty, set its value to the contents of the existing timetable data file
             with open(self.master.filename, encoding='utf-8') as file:
                 self.current_savefile_contents = multireplace(''.join(file.readlines()), {'\n': '', '    ': '', '\t': ''})
-        print(multireplace(json_data, {'\n': '', '    ': '', '\t': ''}))
-        print(self.current_savefile_contents)
 
         self.events_saved = multireplace(json_data, {'\n': '', '    ': '', '\t': ''}) == self.current_savefile_contents  # Check if the saved timetable matches the current timetable
         self.update_save_buttons()  # Update the state of the `save` and `save as` buttons
@@ -2492,12 +2827,15 @@ class TimeTable:
         """
         Update the displayed event type icons whenever the event type of the current event is changed
         """
+        ## Todo: update bg formatting of cells with events
 
         self.check_saved(self.get_json())  # Check if the file is saved to update the save/saveas buttons
         self.week_elems[self.week].edit_event_type(self.active_cell.current_event)  # Update the event type count for the selected event’s week.
 
         if self.active_cell is not None and self.active_cell.current_event is not None:  # If a cell is selected which has an event
             self.active_cell.events_indicator.configure(image=self.master.icons[self.active_cell.current_event.type()])  # Update the displayed event type icon for the cell
+            if self.active_cell.current_event.display_widget is not None:  # If the active cell’s current event has an upcoming event widget, update the formatting of said widget.
+                self.active_cell.current_event.display_widget.update_event_type()
 
     def get_session_index(self, timeslot: int = None) -> int | None:
         """
@@ -2515,6 +2853,16 @@ class TimeTable:
             return None
         else:
             return timeslot - sum(map(lambda v: timeslot > v, self.session_break_idxs[0]))  # Otherwise, subtract the offset caused by the session breaks
+
+    def get_timeslot_index(self, session: int) -> int | None:
+        """
+        Get the timeslot index corresponding to the input session
+
+        :param session: The input session to process.
+        :return: The timeslot index corresponding to the input session
+        """
+
+        return session + sum(map(lambda v: session > v, self.session_break_idxs[1]))  # Add the offset caused by the session breaks and return the result
 
     def update_week(self, value: str | int) -> None:
         """
@@ -2560,13 +2908,51 @@ class TimeTable:
 
         ## TODO: test behaviour when an event already exists
         if self.active_cell is not None:  # If a cell is selected
-            event = Event(self.week, self.active_cell.day, self.active_cell.session, '', None, 'Event')  # Create an event
+            event = Event(self, self.week, self.active_cell.day, self.active_cell.session, '', None, 'Event', 'Untitled Event')  # Create an event
             self.events.append(event)  # Add the new event object to the event list
+            self.events.sort(key=list)  # Sort the list of events by their timeslot obtained by converting the event to an iterable
             self.active_cell.set_event(event)  # Set the event of the current cell to the newly created event
             self.update_active_event()  # Update the timetable’s active event
             self.event_entry.focus_set()  # Set the focus into the event text entry widget
             self.check_saved(self.get_json())  # Update the save state for the timetable
             self.week_elems[self.week].add_event(event)  # Add the event to its corresponding week to update the appropriate event type counter
+
+            ## If the event has not already passed, insert it into the upcoming event widgets at the appropriate index
+            if event >= (self.week, self.day, self.get_session(datetime.datetime.now())):
+                move_widgets = list(filter(lambda v: event <= v.event, self.upcoming_events))  # Get the upcoming event widgets that occur after the event
+
+                ## Remove all the widgets that occur after the newly created event from the geometry manager
+                for i in move_widgets:
+                    i.pack_forget()
+
+                ## Todo: notifications and reminders for events
+                ## Todo: event priorities
+
+                ## Create an upcoming event widget and add it to the geometry manager
+                if (event.week, event.day) not in self.upcoming_event_headers:  # If there is not a header for the event’s day and week number
+                    ## Create a header frame and add it to the scrollable frame
+                    header = tk.Frame(self.upcoming_events_frame.frame, background='#4F565E')
+                    header.event = (event.week, event.day, 0)  # Set the event data used to compare event times for the header widget
+                    header.pack(side='top', expand=True, fill='x', padx=(1, 1), pady=(20, 0))
+
+                    ## Add a label to the header frame
+                    tk.Label(header, text=f'{["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][event.day]} Week {event.week}', background='#66587D', foreground='#D8DEE9', font=('Calibri', 13, 'bold'), image=self.master.pixel, compound='center', height=20).pack(side='left', expand=True, fill='x', padx=(1, 1), pady=1)
+                    tk.Label(header, background='#c678dd', image=self.master.pixel, compound='center', width=46, height=20).pack(side='left', padx=(0, 1), pady=1)
+
+                    self.upcoming_events.append(header)  # Add the header to the list of upcoming event widgets
+                    self.upcoming_event_headers.update({(event.week, event.day): header})  # Add the header to the header dictionary keyed by the day and week number
+
+                ## Create an upcoming event widget for the event
+                upcoming_event = UpcomingEvent(self, event, self.upcoming_events_frame.frame)
+                upcoming_event.pack(side='top', expand=True, fill='x', padx=(1, 1), pady=(10, 0))
+
+                event.display_widget = upcoming_event  # Set the new event’s display widget
+
+                self.upcoming_events.insert(len(self.upcoming_events) - len(move_widgets), upcoming_event)  # Insert the upcoming event widget into the list at the appropriate index
+
+                ## Re-add the upcoming event widget to the geometry manager
+                for i in move_widgets:
+                    i.pack(side='top', expand=True, fill='x', padx=(1, 1), pady=(10, 0))
 
     def _proxy(self, *args: tuple[Any]) -> Any:
         """ Called whenever an event occurs in the element. Raises an '<<Edit>>' event when the text is edited and a '<<Change>> event when the cursor is moved'. """
@@ -2607,15 +2993,26 @@ class TimeTable:
             self.update_active_event()  # Update the timetable’s displayed event
             self.check_saved(self.get_json())  # Update the timetable’s save-state
 
+            if event.display_widget is not None:  # If the deleted event has a display widget
+                ## If the deleted event is the only one on the day, remove the header element associated with the event’s week and day
+                if not any([isinstance(v, UpcomingEvent) and v.event.day == event.day and v.event.week == event.week for v in self.upcoming_events]):
+                    elem = self.upcoming_event_headers.pop((event.week, event.day))
+                    self.upcoming_events.remove(elem)
+                    elem.destroy()
+
+                self.upcoming_events.remove(event.display_widget)  # Remove the display widget from the list of upcoming event widgets
+                event.display_widget.destroy()  # Destroy the display widget
+
     def get_json(self) -> str:
         """
         Get the JSON formatted text representing the timetable data
         """
 
         ## Todo: behaviour when quoting characters are in text
+        ## Todo: add all day events / allow the user to specify event duration
 
         ## Get the name, room, and teacher of each class
-        classes, rooms, teachers = list(zip(*list(map(list, self.classes))))
+        classes, rooms, teachers = swapaxes([list(v) for v in self.classes])
 
         ## Initiate a buffer with the names, rooms, and events of each class represented in JSON format
         buffer = (
@@ -2658,6 +3055,8 @@ class TimeTable:
 
         if self.active_cell is not None and self.active_cell.current_event is not None:  # If a cell is selected with an event
             self.active_cell.current_event.text = self.event_entry.get(1.0, tk.END).strip('\n')  # Set the cell’s event’s text to the text currently in the event text entry
+            if self.active_cell.current_event.display_widget is not None:  # If the selected cell’s event has an upcoming event widget, update the text of said widget.
+                self.active_cell.current_event.display_widget.event_text_display.configure(text=self.active_cell.current_event.text)
 
         if self.pause_text_event:  # If text events are paused, unpause them and skip the rest of the function
             self.pause_text_event = False
@@ -2796,6 +3195,8 @@ class TimeTable:
             self.delete_button.configure(state='normal')
             self.event_type_combobox.configure(state='normal', textvariable=self.active_cell.current_event.event_type)
 
+            self.event_title_entry.configure(textvariable=self.active_cell.current_event.title)  # Set the text variable of the event title entry to the event’s title string var.
+
             self.pause_text_event = True  # Pause text events
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -2848,19 +3249,30 @@ class Window(tk.Tk):
                 ('icons/csv_icon.svg', 'csv', 20),
                 ('icons/help_icon.svg', 'help', 20),
                 ('icons/about_icon.svg', 'about', 20),
-                ('icons/win_icon2.svg', 'window_icon2', 64)
+                ('icons/win_icon2.svg', 'window_icon2', 64),
+                ('icons/Upcoming3.svg', 'passed-event', 20),
+                ('icons/passed2.svg', 'upcoming-event', 20)
             ]
         )
 
         ## Add the other SVGs to the icon dictionary
         self.icons.update(
             {
-                'Event': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#e55"><path d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zm-248 50c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/></svg>', scaletowidth=10),
-                'Info': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#55e"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg>', scaletowidth=12),
-                'Reminder': tksvg.SvgImage(data=b'<svg viewBox="0 0 448 512" fill="#ee5"><path d="M224 512c35.32 0 63.97-28.65 63.97-64H160.03c0 35.35 28.65 64 63.97 64zm215.39-149.71c-19.32-20.76-55.47-51.99-55.47-154.29 0-77.7-54.48-139.9-127.94-155.16V32c0-17.67-14.32-32-31.98-32s-31.98 14.33-31.98 32v20.84C118.56 68.1 64.08 130.3 64.08 208c0 102.3-36.15 133.53-55.47 154.29-6 6.45-8.66 14.16-8.61 21.71.11 16.4 12.98 32 32.1 32h383.8c19.12 0 32-15.6 32.1-32 .05-7.55-2.61-15.27-8.61-21.71z"/></svg>', scaletowidth=12),
-                'Bookmark': tksvg.SvgImage(data=b'<svg viewBox="0 0 384 512" fill="#5e5"><path d="M0 512V48C0 21.49 21.49 0 48 0h288c26.51 0 48 21.49 48 48v464L192 400 0 512z"/></svg>', scaletowidth=12),
-                'Assignment': tksvg.SvgImage(data=b'<svg viewBox="0 0 576 512" fill="#e5e"><path d="M542.22 32.05c-54.8 3.11-163.72 14.43-230.96 55.59-4.64 2.84-7.27 7.89-7.27 13.17v363.87c0 11.55 12.63 18.85 23.28 13.49 69.18-34.82 169.23-44.32 218.7-46.92 16.89-.89 30.02-14.43 30.02-30.66V62.75c.01-17.71-15.35-31.74-33.77-30.7zM264.73 87.64C197.5 46.48 88.58 35.17 33.78 32.05 15.36 31.01 0 45.04 0 62.75V400.6c0 16.24 13.13 29.78 30.02 30.66 49.49 2.6 149.59 12.11 218.77 46.95 10.62 5.35 23.21-1.94 23.21-13.46V100.63c0-5.29-2.62-10.14-7.27-12.99z"/></svg>', scaletowidth=12),
-                'Test': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#eee"><path d="M79.18 282.94a32.005 32.005 0 0 0-20.24 20.24L0 480l4.69 4.69 92.89-92.89c-.66-2.56-1.57-5.03-1.57-7.8 0-17.67 14.33-32 32-32s32 14.33 32 32-14.33 32-32 32c-2.77 0-5.24-.91-7.8-1.57l-92.89 92.89L32 512l176.82-58.94a31.983 31.983 0 0 0 20.24-20.24l33.07-84.07-98.88-98.88-84.07 33.07zM369.25 28.32L186.14 227.81l97.85 97.85 199.49-183.11C568.4 67.48 443.73-55.94 369.25 28.32z"/></svg>', scaletowidth=12),
+                ## Event type icons for display
+                'Event': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#e06c75"><path d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zm-248 50c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/></svg>', scaletowidth=10),
+                'Info': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#528bff"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg>', scaletowidth=12),
+                'Reminder': tksvg.SvgImage(data=b'<svg viewBox="0 0 448 512" fill="#56b6c2"><path d="M224 512c35.32 0 63.97-28.65 63.97-64H160.03c0 35.35 28.65 64 63.97 64zm215.39-149.71c-19.32-20.76-55.47-51.99-55.47-154.29 0-77.7-54.48-139.9-127.94-155.16V32c0-17.67-14.32-32-31.98-32s-31.98 14.33-31.98 32v20.84C118.56 68.1 64.08 130.3 64.08 208c0 102.3-36.15 133.53-55.47 154.29-6 6.45-8.66 14.16-8.61 21.71.11 16.4 12.98 32 32.1 32h383.8c19.12 0 32-15.6 32.1-32 .05-7.55-2.61-15.27-8.61-21.71z"/></svg>', scaletowidth=12),
+                'Bookmark': tksvg.SvgImage(data=b'<svg viewBox="0 0 384 512" fill="#98c379"><path d="M0 512V48C0 21.49 21.49 0 48 0h288c26.51 0 48 21.49 48 48v464L192 400 0 512z"/></svg>', scaletowidth=12),
+                'Assignment': tksvg.SvgImage(data=b'<svg viewBox="0 0 576 512" fill="#c678dd"><path d="M542.22 32.05c-54.8 3.11-163.72 14.43-230.96 55.59-4.64 2.84-7.27 7.89-7.27 13.17v363.87c0 11.55 12.63 18.85 23.28 13.49 69.18-34.82 169.23-44.32 218.7-46.92 16.89-.89 30.02-14.43 30.02-30.66V62.75c.01-17.71-15.35-31.74-33.77-30.7zM264.73 87.64C197.5 46.48 88.58 35.17 33.78 32.05 15.36 31.01 0 45.04 0 62.75V400.6c0 16.24 13.13 29.78 30.02 30.66 49.49 2.6 149.59 12.11 218.77 46.95 10.62 5.35 23.21-1.94 23.21-13.46V100.63c0-5.29-2.62-10.14-7.27-12.99z"/></svg>', scaletowidth=12),
+                'Test': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#abb2bf"><path d="M79.18 282.94a32.005 32.005 0 0 0-20.24 20.24L0 480l4.69 4.69 92.89-92.89c-.66-2.56-1.57-5.03-1.57-7.8 0-17.67 14.33-32 32-32s32 14.33 32 32-14.33 32-32 32c-2.77 0-5.24-.91-7.8-1.57l-92.89 92.89L32 512l176.82-58.94a31.983 31.983 0 0 0 20.24-20.24l33.07-84.07-98.88-98.88-84.07 33.07zM369.25 28.32L186.14 227.81l97.85 97.85 199.49-183.11C568.4 67.48 443.73-55.94 369.25 28.32z"/></svg>', scaletowidth=12),
+
+                ## Inverse 'masks' of the event icons for 'masking out' the background of the type display for the upcoming event widgets
+                'Event-Mask': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#303841"><path d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zm-248 50c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/></svg>', scaletowidth=20),
+                'Info-Mask': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#303841"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"/></svg>', scaletowidth=20),
+                'Reminder-Mask': tksvg.SvgImage(data=b'<svg viewBox="0 0 448 512" fill="#303841"><path d="M224 512c35.32 0 63.97-28.65 63.97-64H160.03c0 35.35 28.65 64 63.97 64zm215.39-149.71c-19.32-20.76-55.47-51.99-55.47-154.29 0-77.7-54.48-139.9-127.94-155.16V32c0-17.67-14.32-32-31.98-32s-31.98 14.33-31.98 32v20.84C118.56 68.1 64.08 130.3 64.08 208c0 102.3-36.15 133.53-55.47 154.29-6 6.45-8.66 14.16-8.61 21.71.11 16.4 12.98 32 32.1 32h383.8c19.12 0 32-15.6 32.1-32 .05-7.55-2.61-15.27-8.61-21.71z"/></svg>', scaletowidth=20),
+                'Bookmark-Mask': tksvg.SvgImage(data=b'<svg viewBox="0 0 384 512" fill="#303841"><path d="M0 512V48C0 21.49 21.49 0 48 0h288c26.51 0 48 21.49 48 48v464L192 400 0 512z"/></svg>', scaletowidth=18),
+                'Assignment-Mask': tksvg.SvgImage(data=b'<svg viewBox="0 0 576 512" fill="#303841"><path d="M542.22 32.05c-54.8 3.11-163.72 14.43-230.96 55.59-4.64 2.84-7.27 7.89-7.27 13.17v363.87c0 11.55 12.63 18.85 23.28 13.49 69.18-34.82 169.23-44.32 218.7-46.92 16.89-.89 30.02-14.43 30.02-30.66V62.75c.01-17.71-15.35-31.74-33.77-30.7zM264.73 87.64C197.5 46.48 88.58 35.17 33.78 32.05 15.36 31.01 0 45.04 0 62.75V400.6c0 16.24 13.13 29.78 30.02 30.66 49.49 2.6 149.59 12.11 218.77 46.95 10.62 5.35 23.21-1.94 23.21-13.46V100.63c0-5.29-2.62-10.14-7.27-12.99z"/></svg>', scaletowidth=21),
+                'Test-Mask': tksvg.SvgImage(data=b'<svg viewBox="0 0 512 512" fill="#303841"><path d="M79.18 282.94a32.005 32.005 0 0 0-20.24 20.24L0 480l4.69 4.69 92.89-92.89c-.66-2.56-1.57-5.03-1.57-7.8 0-17.67 14.33-32 32-32s32 14.33 32 32-14.33 32-32 32c-2.77 0-5.24-.91-7.8-1.57l-92.89 92.89L32 512l176.82-58.94a31.983 31.983 0 0 0 20.24-20.24l33.07-84.07-98.88-98.88-84.07 33.07zM369.25 28.32L186.14 227.81l97.85 97.85 199.49-183.11C568.4 67.48 443.73-55.94 369.25 28.32z"/></svg>', scaletowidth=20),
 
                 'restore': None,
                 'version': None,
@@ -2884,7 +3296,7 @@ class Window(tk.Tk):
 
         self.popup_elem = None
         self.popup_after = None
-        self.enable_popup_animation = True
+        self.enable_popup_animation = True  # Set to `False` to disable popup animations
 
         ## If the stored timetable file failed one or more validation checks, use a temporary file
         if any(file_checks[:3]) or any(file_checks[-3:]):  # Check if the timetable file failed validation
@@ -2982,6 +3394,12 @@ class Window(tk.Tk):
         ## Specify the style of the entry widget
         self.style.configure('stipple.TEntry', font=('Calibri', 13), background='#2E3238', activebackground='#2E3238', selectrelief='flat', foreground='#D8DEE9', borderwidth=0, insertbackground='#F9AE58', insertcolor='#ff0', relief='flat', padding=(2, -1, 2, -1))
         self.style.map('stipple.TEntry', background=[('disabled', '#2E3238'), ('!disabled', '#2E3238')])
+
+        self.manager.map('title.TEntry', 'Entry.field', {'default': 'blank', '!disabled': 'blank', 'disabled': 'stipple'}, inherit=False)
+
+        ## Specify the style of the entry widget
+        self.style.configure('title.TEntry', font=('Calibri', 15, 'bold'), background='#303841', activebackground='#2E3238', selectrelief='flat', foreground='#D8DEE9', borderwidth=0, insertbackground='#F9AE58', insertcolor='#ff0', relief='flat', padding=(2, -1, 2, -1))
+        self.style.map('title.TEntry', background=[('disabled', '#303841'), ('!disabled', '#303841')])
 
         ## ------------------------------------------ Scrollbar --------------------------------------------
         self.style.configure('TScrollbar', width=7, arrowcolor='#B8BBBE', background='#696F75', troughcolor='#444B53', relief='flat', troughrelief='flat')
@@ -3189,6 +3607,8 @@ class Window(tk.Tk):
 
     def remove_popup(self) -> None:
         """ Remove the current popup """
+
+        ## Todo: moving off-screen animation is broken
 
         if self.enable_popup_animation:  # If animation is enabled
             ## Animate the popup moving off-screen
@@ -3613,7 +4033,7 @@ def validate_local_files() -> list[bool | str]:
     else:
         checks.extend([False, False, False])
 
-    return checks  # Return the result of all of the validation checks
+    return checks  # Return the result of the validation checks
 
 
 file_val = validate_local_files()  # Validate the existence and contents of the local files.
@@ -3686,8 +4106,6 @@ else:  # Otherwise, show warnings related to file validation
 
 ProgramClosed = False
 
-print(file_val)
-print(file_val[:3], file_val[-3:])
 ## If the existing timetable file is missing, invalid, or otherwise can't be read, create a new timetable file.
 if any(file_val[:3]) or any(file_val[-3:]):  # Check the validation of the settings file and timetable file.
     ## Prompt the user for a filename for the new timetable file
