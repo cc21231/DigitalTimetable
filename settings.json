@@ -1,8 +1,8 @@
 {
-    "default.path": "C:/Users/Connor/Documents/exe_test/venv/new_timetable.json", 
+    "default.path": "C:/Users/Connor/Documents/exe_test/venv/timetable3.json", 
     "editor.font": [
         "Calibri", 
-        10, 
+        14, 
         ""
     ], 
     "dpi_awareness": 2, 
