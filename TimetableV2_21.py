@@ -393,6 +393,10 @@ class TimetableClass:
         yield self.teacher_disp.get().replace("\"", "\\\"")
 
 
+## Todo: current time 'playhead', draggable events, custom event start times, day/month/week view, session division editor, optimise and publish ip2 and toolsV2, O(n) finder, multiple events per session
+## Todo: prompt to reset week when number of weeks exceded. Add number of weeks to timetable properties
+
+
 class ExportAsPDFMenu(tk.Toplevel):
     """
     A window that allows converting a timetable file to PDF and configuring the formatting of the resulting PDF.
@@ -1966,7 +1970,15 @@ class TimeTable:
         self.active_header_config = {'background': '#8C3841', 'foreground': '#D4D6D7', 'font': ('Calibri', 13, 'bold'), 'highlightbackground': '#963D49'}
         self.inactive_header_config = {'background': '#424D59', 'foreground': '#D4D6D7', 'font': ('Calibri', 13), 'highlightbackground': '#4F565E'}
 
+        self.flags = [0]  # Flags for post-loading actions
+
+        self.num_weeks = 12
+
         self.week = self.get_week(datetime.datetime.now().timestamp())  # Calculate the current week number
+        if self.week >= self.num_weeks:
+            self.week = 0
+            self.flags[0]  = 1
+
         self.sessions, self.sessiontimes = self.get_sessiontimes(sessions)  # Calculate the time index for each session and get the session data to display
 
         self.timeslot_idx = self.get_session(datetime.datetime.now())  # Declare a variable containing the session to calculate time (will never be NULL)
@@ -1991,12 +2003,12 @@ class TimeTable:
 
         self.weekframe = tk.Frame(frame, background='#222')
         self.weekframe.grid(row=1, column=1, sticky='NSWE', pady=(0, 0))
-        self.weekframe.rowconfigure(list(range(12)), weight=1)
+        self.weekframe.rowconfigure(list(range(self.num_weeks)), weight=1)
         self.weekframe.columnconfigure(1, weight=1, minsize=150)
         self.week_elems = []
 
         ## Add the week display elements to the week frame
-        for i in range(12):
+        for i in range(self.num_weeks):
             frame = WeekFrame(self, i, self.weekframe, background='#303841', highlightbackground='#3B434C', highlightthickness=1)
             frame.grid(row=i, column=1, sticky='nswe', padx=(0, 0), pady=(int(i == 0), 1))
             self.week_elems.append(frame)
@@ -3798,6 +3810,11 @@ window = Window(file_val)  # Create the main window
 ## Display a warning if using the wrong operating system, otherwise, set DPI awareness
 if platform.system() == 'Windows':
     ctypes.windll.shcore.SetProcessDpiAwareness(window.settings['dpi_awareness'])
+
+if window.timetable.flags[0]:
+    window.timetable.start_timestamp = window.get_start_week()
+    window.timetable.week = window.timetable.get_week(datetime.datetime.now().timestamp())
+    window.timetable.update_week(window.timetable.week)
 
 if file_exists('first_time_setup.txt') and getattr(sys, 'frozen', True):  # Check if this is the first time the program is being run as an executable
     os.remove('first_time_setup.txt')  # Remove the file marking the first time setup
